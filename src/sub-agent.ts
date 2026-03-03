@@ -15,7 +15,7 @@ import {
   editTool
 } from "@mariozechner/pi-coding-agent";
 import { Subject, filter, map, type Observable } from "rxjs";
-import { cacheTranscript } from "./tools/create-sub-agent.tool.js";
+import { cacheTranscript, setGlobalExpanded } from "./tools/create-sub-agent.tool.js";
 
 export type SubAgentRole = 'researcher' | 'tester' | 'reviewer' | 'coder';
 
@@ -116,7 +116,9 @@ export class SubAgent {
     };
 
     const notifyUpdate = () => {
-        // Cache the transcript for UI rebuilds (Ctrl+T during execution)
+        if (ctx?.hasUI) {
+            setGlobalExpanded(ctx.ui.getToolsExpanded());
+        }
         if (toolCallId) {
             cacheTranscript(toolCallId, { steps: [...transcript.steps] });
         }

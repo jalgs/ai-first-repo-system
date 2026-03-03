@@ -4,46 +4,6 @@ import { Container, Text } from "@mariozechner/pi-tui";
 import { SubAgent, type SubAgentRole, type SubAgentTranscript } from "../sub-agent.js";
 import { renderTranscript } from "./sub-agent-renderer/index.js";
 
-// Global cache to preserve transcript state during UI rebuilds (e.g., Ctrl+T)
-// This is needed because the framework clears pendingTools after rebuilding the chat,
-// causing partial results to be lost when toggle thinking is pressed during execution.
-interface CachedState {
-  transcript: SubAgentTranscript;
-  expanded: boolean;
-}
-const stateCache = new Map<string, CachedState>();
-
-// Global expanded state for when we don't have a toolCallId
-let globalExpanded = false;
-
-export function cacheTranscript(toolCallId: string, transcript: SubAgentTranscript): void {
-  const existing = stateCache.get(toolCallId);
-  stateCache.set(toolCallId, { 
-    transcript, 
-    expanded: existing?.expanded ?? false 
-  });
-}
-
-export function getCachedTranscript(toolCallId: string): SubAgentTranscript | undefined {
-  return stateCache.get(toolCallId)?.transcript;
-}
-
-export function clearCachedTranscript(toolCallId: string): void {
-  stateCache.delete(toolCallId);
-}
-
-export function setGlobalExpanded(expanded: boolean): void {
-  globalExpanded = expanded;
-  // Also update all cached states
-  for (const [key, state] of stateCache) {
-    stateCache.set(key, { ...state, expanded });
-  }
-}
-
-export function getGlobalExpanded(): boolean {
-  return globalExpanded;
-}
-
 const SubAgentParams = Type.Object({
   role: Type.String({ description: "Specialization: 'researcher' | 'tester' | 'reviewer' | 'coder'" }),
   systemPrompt: Type.Optional(Type.String({ description: "Custom system prompt for the sub-agent" })),
@@ -51,6 +11,130 @@ const SubAgentParams = Type.Object({
 });
 
 type SubAgentParams = Static<typeof SubAgentParams>;
+
+interface CachedState {
+  toolCallId: string;
+  argsSignature: string;
+  transcript: SubAgentTranscript;
+  expanded: boolean;
+  hideThinking: boolean;
+  updatedAt: number;
+}
+
+const stateCache = new Map<string, CachedState>();
+const callIdsByArgsSignature = new Map<string, string[]>();
+
+let globalExpanded = false;
+let globalHideThinking = false;
+
+const CTRL_T = "\u0014";
+const CTRL_O = "\u000f";
+
+function createArgsSignature(args: Pick<SubAgentParams, "role" | "prompt" | "systemPrompt">): string {
+  return JSON.stringify({
+    role: args.role,
+    prompt: args.prompt,
+    systemPrompt: args.systemPrompt ?? "",
+  });
+}
+
+function getMostRecentCachedState(): CachedState | undefined {
+  let latest: CachedState | undefined;
+  for (const state of stateCache.values()) {
+    if (!latest || state.updatedAt > latest.updatedAt) {
+      latest = state;
+    }
+  }
+  return latest;
+}
+
+function getCachedStateForArgs(args: SubAgentParams): CachedState | undefined {
+  const signature = createArgsSignature(args);
+  const callIds = callIdsByArgsSignature.get(signature);
+  if (!callIds || callIds.length === 0) return undefined;
+
+  for (let i = callIds.length - 1; i >= 0; i--) {
+    const callId = callIds[i];
+    if (!callId) continue;
+    const state = stateCache.get(callId);
+    if (state) return state;
+  }
+  return undefined;
+}
+
+export function registerSubAgentCall(toolCallId: string, params: SubAgentParams): void {
+  const argsSignature = createArgsSignature(params);
+
+  const ids = callIdsByArgsSignature.get(argsSignature) ?? [];
+  if (!ids.includes(toolCallId)) {
+    ids.push(toolCallId);
+    callIdsByArgsSignature.set(argsSignature, ids);
+  }
+
+  const existing = stateCache.get(toolCallId);
+  stateCache.set(toolCallId, {
+    toolCallId,
+    argsSignature,
+    transcript: existing?.transcript ?? { steps: [] },
+    expanded: existing?.expanded ?? globalExpanded,
+    hideThinking: existing?.hideThinking ?? globalHideThinking,
+    updatedAt: Date.now(),
+  });
+}
+
+export function cacheTranscript(toolCallId: string, transcript: SubAgentTranscript): void {
+  const existing = stateCache.get(toolCallId);
+  if (!existing) return;
+
+  stateCache.set(toolCallId, {
+    ...existing,
+    transcript,
+    updatedAt: Date.now(),
+  });
+}
+
+export function clearCachedTranscript(toolCallId: string): void {
+  const existing = stateCache.get(toolCallId);
+  stateCache.delete(toolCallId);
+
+  if (!existing) return;
+
+  const ids = callIdsByArgsSignature.get(existing.argsSignature);
+  if (!ids) return;
+
+  const filtered = ids.filter((id) => id !== toolCallId);
+  if (filtered.length === 0) {
+    callIdsByArgsSignature.delete(existing.argsSignature);
+  } else {
+    callIdsByArgsSignature.set(existing.argsSignature, filtered);
+  }
+}
+
+export function setGlobalExpanded(expanded: boolean): void {
+  globalExpanded = expanded;
+  for (const [key, state] of stateCache) {
+    stateCache.set(key, { ...state, expanded });
+  }
+}
+
+export function toggleGlobalHideThinking(): void {
+  globalHideThinking = !globalHideThinking;
+  for (const [key, state] of stateCache) {
+    stateCache.set(key, { ...state, hideThinking: globalHideThinking });
+  }
+}
+
+export function getGlobalHideThinking(): boolean {
+  return globalHideThinking;
+}
+
+export function syncGlobalUiToggles(input: string): void {
+  if (input === CTRL_T) {
+    toggleGlobalHideThinking();
+  } else if (input === CTRL_O) {
+    setGlobalExpanded(!globalExpanded);
+  }
+}
 
 export const subAgentTool: ToolDefinition<typeof SubAgentParams, SubAgentTranscript> = {
   name: "createSubAgent",
@@ -61,6 +145,14 @@ export const subAgentTool: ToolDefinition<typeof SubAgentParams, SubAgentTranscr
 
   execute: async (toolCallId, params, signal, onUpdate, ctx) => {
     const { role, systemPrompt, prompt } = params;
+    registerSubAgentCall(toolCallId, params);
+
+    const stopTerminalListener = ctx.hasUI
+      ? ctx.ui.onTerminalInput((data) => {
+          syncGlobalUiToggles(data);
+          return undefined;
+        })
+      : undefined;
 
     const subAgent = new SubAgent({
       role: role as SubAgentRole,
@@ -78,7 +170,6 @@ export const subAgentTool: ToolDefinition<typeof SubAgentParams, SubAgentTranscr
 
     try {
       const result = await subAgent.run(prompt, ctx, onUpdate, toolCallId);
-      // Clear cache after successful completion (result is now in session)
       clearCachedTranscript(toolCallId);
       return {
         content: result.content,
@@ -87,6 +178,8 @@ export const subAgentTool: ToolDefinition<typeof SubAgentParams, SubAgentTranscr
     } catch (err) {
       clearCachedTranscript(toolCallId);
       throw err;
+    } finally {
+      stopTerminalListener?.();
     }
   },
 
@@ -99,54 +192,35 @@ export const subAgentTool: ToolDefinition<typeof SubAgentParams, SubAgentTranscr
         0
       )
     );
-    
-    // If there's cached transcript data (from an in-progress execution after Ctrl+T),
-    // render it here since renderResult won't be called without a result
-    for (const cached of stateCache.values()) {
-      if (cached.transcript.steps && cached.transcript.steps.length > 0) {
-        // Use the cached expanded state
-        const transcriptContainer = renderTranscript(cached.transcript, theme, cached.expanded, true);
-        container.addChild(transcriptContainer);
-        break;
-      }
+
+    const cached = getCachedStateForArgs(args) ?? getMostRecentCachedState();
+    if (cached?.transcript.steps?.length) {
+      container.addChild(
+        renderTranscript(cached.transcript, theme, cached.expanded, true, cached.hideThinking)
+      );
     }
-    
+
     return container;
   },
 
   renderResult: (result, options, theme) => {
     let details = result.details as SubAgentTranscript | undefined;
-    const expanded = options.expanded;
-    const isPartial = options.isPartial;
 
-    // Update the global expanded state so renderCall can use it
-    setGlobalExpanded(expanded);
+    setGlobalExpanded(options.expanded);
 
-    // If details is missing but we have cached data, use it
-    // This handles the case where Ctrl+T is pressed during execution
-    if ((!details || !details.steps || details.steps.length === 0)) {
-      // Try to find cached transcript by checking all cached entries
-      // Since we don't have toolCallId here, we use the most recent cache entry
-      // that has steps (this is a workaround for the framework limitation)
-      for (const cached of stateCache.values()) {
-        if (cached.transcript.steps && cached.transcript.steps.length > 0) {
-          details = cached.transcript;
-          break;
-        }
+    if (!details?.steps?.length) {
+      const fallback = getMostRecentCachedState();
+      if (fallback?.transcript.steps?.length) {
+        details = fallback.transcript;
       }
     }
 
-    // Handle case where details is still missing or empty
-    if (!details || !details.steps || details.steps.length === 0) {
+    if (!details?.steps?.length) {
       const container = new Container();
-      container.addChild(new Text(
-        theme.fg("muted", `  Sub-agent in progress...`),
-        0, 0
-      ));
+      container.addChild(new Text(theme.fg("muted", "  Sub-agent in progress..."), 0, 0));
       return container;
     }
 
-    // Render the full transcript
-    return renderTranscript(details, theme, expanded, isPartial);
+    return renderTranscript(details, theme, options.expanded, options.isPartial, getGlobalHideThinking());
   },
 };

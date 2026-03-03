@@ -7,13 +7,17 @@ export function renderThinkingStep(
   step: SubAgentStep,
   theme: Theme,
   expanded: boolean,
+  hideThinking: boolean,
   container: Container
 ): void {
   if (!step.content) return;
 
-  // Always show thinking content - never hide it entirely.
-  // When collapsed: show truncated preview
-  // When expanded: show full content
+  if (hideThinking) {
+    container.addChild(new Text(theme.italic(theme.fg("thinkingText", "Thinking...")), 1, 0));
+    container.addChild(new Spacer(1));
+    return;
+  }
+
   const thinkingBox = new Box(1, 1, (_s: string) => _s);
   const thinkingLines = step.content.split("\n");
   const maxLines = expanded ? thinkingLines.length : 3;
@@ -42,11 +46,9 @@ export function renderTextStep(
   if (!step.content?.trim()) return;
 
   const markdownTheme = getMarkdownTheme();
-  // Always show text content - use markdown when expanded, plain text preview when collapsed
   if (expanded) {
     container.addChild(new Markdown(step.content.trim(), 1, 0, markdownTheme));
   } else {
-    // Show first few lines as preview
     const lines = step.content.trim().split("\n");
     const maxLines = 5;
     const displayLines = lines.slice(0, maxLines);
@@ -74,7 +76,6 @@ export function renderToolWithResult(
   const args = callStep.args ?? {};
   const hasResult = resultStep?.type === "result";
   const isError = hasResult && !!resultStep?.isError;
-  const isSuccess = hasResult && !isError;
 
   const bgFn = !hasResult
     ? (text: string) => theme.bg("toolPendingBg", text)
@@ -105,7 +106,8 @@ export function renderTranscript(
   details: SubAgentTranscript,
   theme: Theme,
   expanded: boolean,
-  isPartial: boolean
+  isPartial: boolean,
+  hideThinking: boolean
 ): Container {
   const container = new Container();
 
@@ -141,7 +143,7 @@ export function renderTranscript(
     const step = steps[i];
     if (step?.type === "call") {
       const nextStep = steps[i + 1];
-      if (nextStep?.type === "result" && nextStep.toolName === step.toolName) {
+      if (nextStep?.type === "result") {
         toolCallResultMap.set(i, nextStep);
       }
     }
@@ -159,7 +161,7 @@ export function renderTranscript(
 
     switch (step.type) {
       case "thinking":
-        renderThinkingStep(step, theme, expanded, container);
+        renderThinkingStep(step, theme, expanded, hideThinking, container);
         break;
       case "text":
         renderTextStep(step, theme, expanded, container);
