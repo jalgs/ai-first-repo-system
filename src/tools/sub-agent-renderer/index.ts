@@ -1,22 +1,22 @@
 import { Container, Text, Box, Spacer, Markdown } from "@mariozechner/pi-tui";
 import { getMarkdownTheme, keyHint, DynamicBorder, type Theme, type ThemeColor } from "@mariozechner/pi-coding-agent";
-import type { SubAgentStep, SubAgentTranscript } from "../../sub-agent.js";
+import type {
+  SubAgentCallStep,
+  SubAgentResultStep,
+  SubAgentStep,
+  SubAgentTextStep,
+  SubAgentThinkingStep,
+  SubAgentTranscript,
+} from "../../sub-agent.js";
 import { renderToolContent } from "./tool-renderers.js";
 
 export function renderThinkingStep(
-  step: SubAgentStep,
+  step: SubAgentThinkingStep,
   theme: Theme,
   expanded: boolean,
-  hideThinking: boolean,
   container: Container
 ): void {
   if (!step.content) return;
-
-  if (hideThinking) {
-    container.addChild(new Text(theme.italic(theme.fg("thinkingText", "Thinking...")), 1, 0));
-    container.addChild(new Spacer(1));
-    return;
-  }
 
   const thinkingBox = new Box(1, 1, (_s: string) => _s);
   const thinkingLines = step.content.split("\n");
@@ -38,7 +38,7 @@ export function renderThinkingStep(
 }
 
 export function renderTextStep(
-  step: SubAgentStep,
+  step: SubAgentTextStep,
   theme: Theme,
   expanded: boolean,
   container: Container
@@ -64,8 +64,8 @@ export function renderTextStep(
 }
 
 export function renderToolWithResult(
-  callStep: SubAgentStep,
-  resultStep: SubAgentStep | undefined,
+  callStep: SubAgentCallStep,
+  resultStep: SubAgentResultStep | undefined,
   theme: Theme,
   expanded: boolean
 ): Container {
@@ -106,8 +106,7 @@ export function renderTranscript(
   details: SubAgentTranscript,
   theme: Theme,
   expanded: boolean,
-  isPartial: boolean,
-  hideThinking: boolean
+  isPartial: boolean
 ): Container {
   const container = new Container();
 
@@ -138,41 +137,45 @@ export function renderTranscript(
   container.addChild(new Spacer(1));
 
   const steps = details.steps;
-  const toolCallResultMap = new Map<number, SubAgentStep>();
-  for (let i = 0; i < steps.length; i++) {
-    const step = steps[i];
-    if (step?.type === "call") {
-      const nextStep = steps[i + 1];
-      if (nextStep?.type === "result") {
-        toolCallResultMap.set(i, nextStep);
-      }
+  const toolResultsByCallId = new Map<string, SubAgentResultStep>();
+  const processedResultCallIds = new Set<string>();
+
+  for (const step of steps) {
+    if (step.type === "result") {
+      toolResultsByCallId.set(step.toolCallId, step);
     }
   }
 
-  const processedResultIndices = new Set<number>();
-  for (const [callIdx] of toolCallResultMap) {
-    processedResultIndices.add(callIdx + 1);
-  }
-
-  for (let i = 0; i < steps.length; i++) {
-    const step = steps[i];
+  for (const step of steps) {
     if (!step) continue;
-    if (processedResultIndices.has(i)) continue;
 
     switch (step.type) {
       case "thinking":
-        renderThinkingStep(step, theme, expanded, hideThinking, container);
+        renderThinkingStep(step, theme, expanded, container);
         break;
       case "text":
         renderTextStep(step, theme, expanded, container);
         break;
       case "call": {
-        const resultStep = toolCallResultMap.get(i);
+        const resultStep = toolResultsByCallId.get(step.toolCallId);
+        if (resultStep) {
+          processedResultCallIds.add(step.toolCallId);
+        }
         container.addChild(renderToolWithResult(step, resultStep, theme, expanded));
         container.addChild(new Spacer(1));
         break;
       }
       case "result":
+        if (!processedResultCallIds.has(step.toolCallId)) {
+          container.addChild(renderToolWithResult({
+            type: "call",
+            toolCallId: step.toolCallId,
+            toolName: step.toolName,
+            args: {},
+          }, step, theme, expanded));
+          container.addChild(new Spacer(1));
+          processedResultCallIds.add(step.toolCallId);
+        }
         break;
     }
   }

@@ -4,29 +4,50 @@ import {
   DefaultResourceLoader,
   SessionManager,
   type AgentSessionEvent,
-  type ExtensionContext,
   type AgentToolUpdateCallback,
-  readTool,
+  type ExtensionContext,
   bashTool,
-  writeTool,
-  grepTool,
+  editTool,
   findTool,
+  grepTool,
   lsTool,
-  editTool
+  readTool,
+  writeTool,
 } from "@mariozechner/pi-coding-agent";
 import { Subject, filter, map, type Observable } from "rxjs";
-import { cacheTranscript, setGlobalExpanded } from "./tools/create-sub-agent.tool.js";
 
-export type SubAgentRole = 'researcher' | 'tester' | 'reviewer' | 'coder';
+export type SubAgentRole = "researcher" | "tester" | "reviewer" | "coder";
 
-export interface SubAgentStep {
-  type: 'thinking' | 'call' | 'result' | 'text';
-  content?: string;
-  toolName?: string;
-  args?: any;
-  result?: any;
-  isError?: boolean;
+export interface SubAgentCallStep {
+  type: "call";
+  toolCallId: string;
+  toolName: string;
+  args: any;
 }
+
+export interface SubAgentResultStep {
+  type: "result";
+  toolCallId: string;
+  toolName: string;
+  result: any;
+  isError: boolean;
+}
+
+export interface SubAgentThinkingStep {
+  type: "thinking";
+  content: string;
+}
+
+export interface SubAgentTextStep {
+  type: "text";
+  content: string;
+}
+
+export type SubAgentStep =
+  | SubAgentCallStep
+  | SubAgentResultStep
+  | SubAgentThinkingStep
+  | SubAgentTextStep;
 
 export interface SubAgentTranscript {
   steps: SubAgentStep[];
@@ -35,8 +56,21 @@ export interface SubAgentTranscript {
 export interface SubAgentConfig {
   role: SubAgentRole;
   cwd?: string;
-  systemPrompt?: string | undefined;
+  systemPrompt?: string;
 }
+
+export interface SubAgentRunOptions {
+  toolCallId: string;
+  onTranscript?: (toolCallId: string, transcript: SubAgentTranscript) => void;
+  onToolsExpandedChange?: (expanded: boolean) => void;
+}
+
+const ROLE_TOOLS: Record<SubAgentRole, readonly any[]> = {
+  researcher: [readTool, grepTool, findTool, lsTool, bashTool],
+  tester: [readTool, writeTool, bashTool, lsTool],
+  reviewer: [readTool, grepTool, lsTool],
+  coder: [readTool, writeTool, editTool, bashTool, lsTool],
+};
 
 export class SubAgent {
   private session!: AgentSession;
@@ -51,9 +85,7 @@ export class SubAgent {
     this.customSystemPrompt = config.systemPrompt;
   }
 
-  public async init() {
-    const tools = this.getToolsForRole();
-    
+  public async init(): Promise<void> {
     const resourceLoader = new DefaultResourceLoader({
       cwd: this.cwd,
       ...(this.customSystemPrompt ? { systemPrompt: this.customSystemPrompt } : {}),
@@ -63,24 +95,13 @@ export class SubAgent {
       cwd: this.cwd,
       sessionManager: SessionManager.inMemory(),
       resourceLoader,
-      tools,
+      tools: [...ROLE_TOOLS[this.role]],
     });
 
     this.session = session;
     this.session.subscribe((event) => {
       this.eventListener.next(event);
     });
-  }
-
-  private getToolsForRole(): any[] {
-    const roleTools: Record<SubAgentRole, any[]> = {
-      researcher: [readTool, grepTool, findTool, lsTool, bashTool],
-      tester: [readTool, writeTool, bashTool, lsTool],
-      reviewer: [readTool, grepTool, lsTool],
-      coder: [readTool, writeTool, editTool, bashTool, lsTool],
-    };
-
-    return roleTools[this.role] || [readTool, lsTool];
   }
 
   public listen<T extends AgentSessionEvent["type"]>(
@@ -93,126 +114,142 @@ export class SubAgent {
   }
 
   public async run(
-    prompt: string, 
-    ctx?: ExtensionContext, 
+    prompt: string,
+    ctx?: ExtensionContext,
     onUpdate?: AgentToolUpdateCallback<SubAgentTranscript>,
-    toolCallId?: string
-  ): Promise<{ content: any[], transcript: SubAgentTranscript }> {
+    options?: SubAgentRunOptions
+  ): Promise<{ content: any[]; transcript: SubAgentTranscript }> {
     if (!this.session) {
       throw new Error("SubAgent not initialized. Call init() first.");
     }
 
     const transcript: SubAgentTranscript = { steps: [] };
-    let currentAssistantText = '';
-    const theme = ctx?.ui?.theme;
+    let currentAssistantText = "";
 
     const updateUI = (status: string, widgetLines?: string[]) => {
-      if (ctx?.ui) {
-        ctx.ui.setStatus('subagent', theme ? theme.fg('accent', `● [Sub-Agent: ${this.role}] ${status}`) : `[Sub-Agent: ${this.role}] ${status}`);
-        if (widgetLines) {
-           ctx.ui.setWidget('subagent', widgetLines);
-        }
+      if (!ctx?.hasUI) return;
+
+      const accent = ctx.ui.theme.fg("accent", `● [Sub-Agent: ${this.role}] ${status}`);
+      ctx.ui.setStatus("subagent", accent);
+
+      if (widgetLines) {
+        ctx.ui.setWidget("subagent", widgetLines);
       }
     };
 
     const notifyUpdate = () => {
-        if (ctx?.hasUI) {
-            setGlobalExpanded(ctx.ui.getToolsExpanded());
-        }
-        if (toolCallId) {
-            cacheTranscript(toolCallId, { steps: [...transcript.steps] });
-        }
-        if (onUpdate) {
-            onUpdate({
-                content: [{ type: 'text', text: currentAssistantText }],
-                details: { steps: [...transcript.steps] }
-            });
-        }
-    }
+      if (ctx?.hasUI) {
+        options?.onToolsExpandedChange?.(ctx.ui.getToolsExpanded());
+      }
 
-    return new Promise((resolve, reject) => {
-      this.session.prompt(prompt).catch(reject);
+      if (options?.toolCallId && options.onTranscript) {
+        options.onTranscript(options.toolCallId, { steps: [...transcript.steps] });
+      }
 
-      const sub = this.session.subscribe((event) => {
+      onUpdate?.({
+        content: [{ type: "text", text: currentAssistantText }],
+        details: { steps: [...transcript.steps] },
+      });
+    };
+
+    return await new Promise((resolve, reject) => {
+      let settled = false;
+
+      const unsubscribe = this.session.subscribe((event) => {
         switch (event.type) {
           case "agent_start":
-            updateUI('Starting...', [`Role: ${this.role}`, 'Status: Starting...']);
+            updateUI("Starting...", [`Role: ${this.role}`, "Status: Starting..."]);
             break;
+
           case "message_update":
-            if (event.assistantMessageEvent.type === 'text_delta') {
-              updateUI('Thinking...', [`Role: ${this.role}`, 'Status: Working...']);
+            if (event.assistantMessageEvent.type === "text_delta") {
+              updateUI("Thinking...", [`Role: ${this.role}`, "Status: Working..."]);
               currentAssistantText += event.assistantMessageEvent.delta;
-              let lastStep = transcript.steps[transcript.steps.length - 1];
-              if (lastStep?.type === 'text') {
-                  lastStep.content = currentAssistantText;
+
+              const last = transcript.steps[transcript.steps.length - 1];
+              if (last?.type === "text") {
+                last.content = currentAssistantText;
               } else {
-                  transcript.steps.push({ type: 'text', content: currentAssistantText });
+                transcript.steps.push({ type: "text", content: currentAssistantText });
               }
+
               notifyUpdate();
-            } else if (event.assistantMessageEvent.type === 'thinking_delta') {
-              updateUI('Thinking...', [`Role: ${this.role}`, 'Status: Thinking...']);
-               let lastStep = transcript.steps[transcript.steps.length - 1];
-               if (lastStep?.type === 'thinking') {
-                   lastStep.content = (lastStep.content || '') + event.assistantMessageEvent.delta;
-               } else {
-                   transcript.steps.push({ type: 'thinking', content: event.assistantMessageEvent.delta });
-               }
-               notifyUpdate();
+            } else if (event.assistantMessageEvent.type === "thinking_delta") {
+              updateUI("Thinking...", [`Role: ${this.role}`, "Status: Thinking..."]);
+
+              const last = transcript.steps[transcript.steps.length - 1];
+              if (last?.type === "thinking") {
+                last.content += event.assistantMessageEvent.delta;
+              } else {
+                transcript.steps.push({ type: "thinking", content: event.assistantMessageEvent.delta });
+              }
+
+              notifyUpdate();
             }
             break;
+
           case "tool_execution_start":
             updateUI(`Executing ${event.toolName}...`, [
-              `Role: ${this.role}`, 
+              `Role: ${this.role}`,
               `Status: Executing ${event.toolName}...`,
             ]);
-            transcript.steps.push({ 
-                type: 'call', 
-                toolName: event.toolName, 
-                args: event.args 
+
+            transcript.steps.push({
+              type: "call",
+              toolCallId: event.toolCallId,
+              toolName: event.toolName,
+              args: event.args,
             });
             notifyUpdate();
             break;
+
           case "tool_execution_end":
-            updateUI('Working...', [`Role: ${this.role}`, 'Status: Working...']);
-            transcript.steps.push({ 
-                type: 'result', 
-                toolName: event.toolName, 
-                result: event.result,
-                isError: event.isError
+            updateUI("Working...", [`Role: ${this.role}`, "Status: Working..."]);
+
+            transcript.steps.push({
+              type: "result",
+              toolCallId: event.toolCallId,
+              toolName: event.toolName,
+              result: event.result,
+              isError: event.isError,
             });
             notifyUpdate();
             break;
-        }
 
-        if (event.type === "agent_end") {
-          sub();
-          if (ctx?.ui) {
-            ctx.ui.setStatus('subagent', undefined);
-            ctx.ui.setWidget('subagent', undefined);
-          }
+          case "agent_end": {
+            if (settled) return;
+            settled = true;
 
-          const lastAssistantMessage = (event as any).messages
-            ?.filter((m: any) => m.role === "assistant")
-            ?.pop();
-          
-          let finalContent: any[] = [];
-          if (lastAssistantMessage && Array.isArray(lastAssistantMessage.content)) {
-             finalContent = lastAssistantMessage.content.filter((c: any) => c.type === 'text' || c.type === 'image');
-          } else {
-             finalContent = [{ type: 'text', text: currentAssistantText || "No content returned from sub-agent." }];
+            unsubscribe();
+            if (ctx?.hasUI) {
+              ctx.ui.setStatus("subagent", undefined);
+              ctx.ui.setWidget("subagent", undefined);
+            }
+
+            const finalContent = currentAssistantText
+              ? [{ type: "text" as const, text: currentAssistantText }]
+              : [{ type: "text" as const, text: "No content returned from sub-agent." }];
+
+            resolve({ content: finalContent, transcript });
+            break;
           }
-          
-          resolve({ content: finalContent, transcript });
         }
+      });
+
+      this.session.prompt(prompt).catch((error) => {
+        if (settled) return;
+        settled = true;
+        unsubscribe();
+        if (ctx?.hasUI) {
+          ctx.ui.setStatus("subagent", undefined);
+          ctx.ui.setWidget("subagent", undefined);
+        }
+        reject(error);
       });
     });
   }
 
-  public getSession(): AgentSession {
-    return this.session;
-  }
-
-  public abort() {
+  public abort(): void {
     this.session?.abort();
   }
 }

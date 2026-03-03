@@ -1,11 +1,11 @@
 import { Box, Text } from "@mariozechner/pi-tui";
 import { highlightCode, getLanguageFromPath, type Theme, type ThemeColor } from "@mariozechner/pi-coding-agent";
 import { shortenPath, replaceTabs, renderOutputLines } from "./utils.js";
-import type { SubAgentStep } from "../../sub-agent.js";
+import type { SubAgentResultStep } from "../../sub-agent.js";
 
 type ToolRenderContext = {
   args: Record<string, unknown>;
-  resultStep: SubAgentStep | undefined;
+  resultStep: SubAgentResultStep | undefined;
   theme: Theme;
   expanded: boolean;
   toolBox: Box;
@@ -13,7 +13,7 @@ type ToolRenderContext = {
   statusColor: ThemeColor;
 };
 
-function getTextContentFromResult(resultStep: SubAgentStep | undefined): string | undefined {
+function getTextContentFromResult(resultStep: SubAgentResultStep | undefined): string | undefined {
   if (!resultStep?.result?.content || !Array.isArray(resultStep.result.content)) return undefined;
   for (const block of resultStep.result.content) {
     if (block.type === "text" && block.text) return block.text;
@@ -246,7 +246,7 @@ const toolRenderers: Record<string, (ctx: ToolRenderContext) => void> = {
 export function renderToolContent(
   toolName: string,
   args: Record<string, unknown>,
-  resultStep: SubAgentStep | undefined,
+  resultStep: SubAgentResultStep | undefined,
   theme: Theme,
   expanded: boolean,
   toolBox: Box,
@@ -275,7 +275,7 @@ export function renderToolContent(
   }
 }
 
-export function renderToolError(resultStep: SubAgentStep | undefined, theme: Theme, toolBox: Box): void {
+export function renderToolError(resultStep: SubAgentResultStep | undefined, theme: Theme, toolBox: Box): void {
   if (!resultStep?.result?.content || !Array.isArray(resultStep.result.content)) return;
   for (const block of resultStep.result.content) {
     if (block.type === "text" && block.text) {
