@@ -15,6 +15,7 @@ import {
   editTool
 } from "@mariozechner/pi-coding-agent";
 import { Subject, filter, map, type Observable } from "rxjs";
+import { cacheTranscript } from "./tools/create-sub-agent.tool.js";
 
 export type SubAgentRole = 'researcher' | 'tester' | 'reviewer' | 'coder';
 
@@ -94,7 +95,8 @@ export class SubAgent {
   public async run(
     prompt: string, 
     ctx?: ExtensionContext, 
-    onUpdate?: AgentToolUpdateCallback<SubAgentTranscript>
+    onUpdate?: AgentToolUpdateCallback<SubAgentTranscript>,
+    toolCallId?: string
   ): Promise<{ content: any[], transcript: SubAgentTranscript }> {
     if (!this.session) {
       throw new Error("SubAgent not initialized. Call init() first.");
@@ -114,6 +116,10 @@ export class SubAgent {
     };
 
     const notifyUpdate = () => {
+        // Cache the transcript for UI rebuilds (Ctrl+T during execution)
+        if (toolCallId) {
+            cacheTranscript(toolCallId, { steps: [...transcript.steps] });
+        }
         if (onUpdate) {
             onUpdate({
                 content: [{ type: 'text', text: currentAssistantText }],
