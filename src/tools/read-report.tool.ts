@@ -20,15 +20,6 @@ export const readReportTool: ToolDefinition<typeof ReadReportParams, { content?:
         const sessionId = ctx.sessionManager.getSessionId();
         const reportsDir = path.join(process.cwd(), "sessions", sessionId, "reports");
 
-        try {
-            await fs.access(reportsDir);
-        } catch {
-            return {
-                content: [{ type: "text", text: "No reports found." }],
-                details: { files: [] }
-            };
-        }
-
         if (params.fileName) {
             const safeFileName = path.basename(params.fileName);
             const filePath = path.join(reportsDir, safeFileName);

@@ -11,7 +11,7 @@ needs more research before planning.
 - **validator**: Validates the implementation against the plan and checks best practices. Always produces
 `validation-report.md`. Never edits code.
 
-Each sub-agent writes a report to the reports directory before responding to you. You MUST use the `readReportTool` to read these reports in full before deciding your next step. The sub-agent will only give you a brief summary over the conversation, so the details are ONLY in the report.
+Each sub-agent writes a report to the reports directory before responding to you. You MUST use the `readReport` tool to read these reports in full before deciding your next step. The sub-agent will only give you a brief summary over the conversation, so the details are ONLY in the report.
 
 Reports path: {{reports_path}}
 

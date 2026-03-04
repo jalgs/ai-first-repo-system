@@ -41,7 +41,7 @@ export const subAgentTool: ToolDefinition<typeof SubAgentParams, SubAgentTranscr
       ctx,
     });
 
-    await subAgent.init(ctx.sessionManager.getSessionId());
+    await subAgent.init();
 
     if (signal) {
       signal.onabort = () => {

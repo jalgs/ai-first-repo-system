@@ -66,24 +66,36 @@ export class SubAgent {
 
   constructor(config: SubAgentConfig) {
     this.role = config.role;
+    if (config.ctx) this.ctx = config.ctx;
     this.cwd = config.ctx?.cwd ?? process.cwd();
   }
 
-  public async init(sessionId: string): Promise<void> {
+  public async init(): Promise<void> {
     const systemPrompt = await getSubAgentSystemPrompt(this.role)
 
     const resourceLoader = new DefaultResourceLoader({
       cwd: this.cwd,
       systemPromptOverride: base => `${base}\n\n${systemPrompt}`,
+      extensionFactories: [pi => {
+        const tools = getSubAgentTools(this.role)
+        for (const tool of tools) {
+          pi.registerTool(tool)
+        }
+      }]
     });
 
     await resourceLoader.reload();
 
+    const parentSessionFile = this.ctx?.sessionManager.getSessionFile();
+    const sharedSessionManager = parentSessionFile
+      ? SessionManager.open(parentSessionFile)
+      : SessionManager.inMemory(this.cwd);
+
     const { session } = await createAgentSession({
       cwd: this.cwd,
-      sessionManager: SessionManager.inMemory(),
+      sessionManager: sharedSessionManager,
       resourceLoader,
-      tools: getSubAgentTools(this.role),
+      tools: [],
       ...this.ctx?.model ? { model: this.ctx.model } : {},
     });
 
