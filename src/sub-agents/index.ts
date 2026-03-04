@@ -5,6 +5,7 @@ import {
     codingTools,
     readOnlyTools
 } from "@mariozechner/pi-coding-agent";
+import { writeReportTool } from "../tools/write-report.tool.js";
 import * as fs from 'node:fs'
 
 export enum SubAgentRole {
@@ -20,16 +21,16 @@ type SubAgentConfig = {
 
 const SUB_AGENTS_MAP: Record<SubAgentRole, SubAgentConfig> = {
     [SubAgentRole.Researcher]: {
-        tools: readOnlyTools,
+        tools: [...readOnlyTools, writeReportTool],
     },
     [SubAgentRole.Planner]: {
-        tools: [...readOnlyTools, writeTool],
+        tools: [...readOnlyTools, writeReportTool],
     },
     [SubAgentRole.Developer]: {
-        tools: codingTools,
+        tools: [...codingTools, writeReportTool],
     },
     [SubAgentRole.Validator]: {
-        tools: [...readOnlyTools, writeTool],
+        tools: [...readOnlyTools, writeReportTool],
     }
 }
 

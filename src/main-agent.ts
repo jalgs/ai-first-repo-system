@@ -3,22 +3,23 @@ import {
   createAgentSession,
   DefaultResourceLoader,
   InteractiveMode,
+  SessionManager,
   type AgentSessionEvent,
   type ExtensionFactory,
 } from "@mariozechner/pi-coding-agent";
 import { filter, map, Observable, Subject } from "rxjs";
 import { subAgentTool } from "./tools/create-sub-agent.tool.js";
+import { readReportTool } from "./tools/read-report.tool.js";
 import *  as fs from 'node:fs'
 
 
 const SYSTEM_PROMPT = fs.readFileSync('./src/prompts/director.md', {
-    encoding: 'utf8'
+  encoding: 'utf8'
 })
-
-console.log(SYSTEM_PROMPT)
 
 const subAgentExtension: ExtensionFactory = (pi) => {
   pi.registerTool(subAgentTool);
+  pi.registerTool(readReportTool);
 };
 
 class MainAgent {
@@ -26,9 +27,10 @@ class MainAgent {
   private readonly eventListener = new Subject<AgentSessionEvent>();
 
   public async initSession() {
+
     const resourceLoader = new DefaultResourceLoader({
       cwd: process.cwd(),
-      systemPrompt: SYSTEM_PROMPT,
+      systemPromptOverride: base => `${base}\n\n${SYSTEM_PROMPT}`,
       extensionFactories: [subAgentExtension],
     });
 
@@ -37,15 +39,10 @@ class MainAgent {
     const { session } = await createAgentSession({
       cwd: process.cwd(),
       resourceLoader,
+      tools: []
     });
 
     this.session = session;
-
-    const currentTools = this.session.getActiveToolNames();
-    if (!currentTools.includes(subAgentTool.name)) {
-      this.session.setActiveToolsByName([...currentTools, subAgentTool.name]);
-    }
-
     this.session.subscribe((event) => {
       this.eventListener.next(event);
     });

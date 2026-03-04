@@ -38,10 +38,10 @@ export const subAgentTool: ToolDefinition<typeof SubAgentParams, SubAgentTranscr
 
     const subAgent = new SubAgent({
       role: params.role,
-      cwd: ctx.cwd,
+      ctx,
     });
 
-    await subAgent.init();
+    await subAgent.init(ctx.sessionManager.getSessionId());
 
     if (signal) {
       signal.onabort = () => {
@@ -50,7 +50,7 @@ export const subAgentTool: ToolDefinition<typeof SubAgentParams, SubAgentTranscr
     }
 
     try {
-      const result = await subAgent.run(params.prompt, ctx, onUpdate, {
+      const result = await subAgent.run(params.prompt, onUpdate, {
         toolCallId,
         onTranscript: cacheTranscript,
         onToolsExpandedChange: setGlobalExpanded,

@@ -47,7 +47,7 @@ export interface SubAgentTranscript {
 
 export interface SubAgentConfig {
   role: SubAgentRole;
-  cwd?: string;
+  ctx?: ExtensionContext
 }
 
 export interface SubAgentRunOptions {
@@ -62,23 +62,29 @@ export class SubAgent {
   private readonly eventListener = new Subject<AgentSessionEvent>();
   private readonly role: SubAgentRole;
   private readonly cwd: string;
+  private readonly ctx?: ExtensionContext
 
   constructor(config: SubAgentConfig) {
     this.role = config.role;
-    this.cwd = config.cwd ?? process.cwd();
+    this.cwd = config.ctx?.cwd ?? process.cwd();
   }
 
-  public async init(): Promise<void> {
+  public async init(sessionId: string): Promise<void> {
+    const systemPrompt = await getSubAgentSystemPrompt(this.role)
+
     const resourceLoader = new DefaultResourceLoader({
       cwd: this.cwd,
-      systemPrompt: await getSubAgentSystemPrompt(this.role)
+      systemPromptOverride: base => `${base}\n\n${systemPrompt}`,
     });
+
+    await resourceLoader.reload();
 
     const { session } = await createAgentSession({
       cwd: this.cwd,
       sessionManager: SessionManager.inMemory(),
       resourceLoader,
       tools: getSubAgentTools(this.role),
+      ...this.ctx?.model ? { model: this.ctx.model } : {},
     });
 
     this.session = session;
@@ -98,7 +104,6 @@ export class SubAgent {
 
   public async run(
     prompt: string,
-    ctx?: ExtensionContext,
     onUpdate?: AgentToolUpdateCallback<SubAgentTranscript>,
     options?: SubAgentRunOptions
   ): Promise<{ content: any[]; transcript: SubAgentTranscript }> {
@@ -106,23 +111,24 @@ export class SubAgent {
       throw new Error("SubAgent not initialized. Call init() first.");
     }
 
+
     const transcript: SubAgentTranscript = { steps: [] };
     let currentAssistantText = "";
 
     const updateUI = (status: string, widgetLines?: string[]) => {
-      if (!ctx?.hasUI) return;
+      if (!this.ctx?.hasUI) return;
 
-      const accent = ctx.ui.theme.fg("accent", `● [Sub-Agent: ${this.role}] ${status}`);
-      ctx.ui.setStatus("subagent", accent);
+      const accent = this.ctx.ui.theme.fg("accent", `● [Sub-Agent: ${this.role}] ${status}`);
+      this.ctx.ui.setStatus("subagent", accent);
 
       if (widgetLines) {
-        ctx.ui.setWidget("subagent", widgetLines);
+        this.ctx.ui.setWidget("subagent", widgetLines);
       }
     };
 
     const notifyUpdate = () => {
-      if (ctx?.hasUI) {
-        options?.onToolsExpandedChange?.(ctx.ui.getToolsExpanded());
+      if (this.ctx?.hasUI) {
+        options?.onToolsExpandedChange?.(this.ctx.ui.getToolsExpanded());
       }
 
       if (options?.toolCallId && options.onTranscript) {
@@ -204,9 +210,9 @@ export class SubAgent {
             settled = true;
 
             unsubscribe();
-            if (ctx?.hasUI) {
-              ctx.ui.setStatus("subagent", undefined);
-              ctx.ui.setWidget("subagent", undefined);
+            if (this.ctx?.hasUI) {
+              this.ctx.ui.setStatus("subagent", undefined);
+              this.ctx.ui.setWidget("subagent", undefined);
             }
 
             const finalContent = currentAssistantText
@@ -223,9 +229,9 @@ export class SubAgent {
         if (settled) return;
         settled = true;
         unsubscribe();
-        if (ctx?.hasUI) {
-          ctx.ui.setStatus("subagent", undefined);
-          ctx.ui.setWidget("subagent", undefined);
+        if (this.ctx?.hasUI) {
+          this.ctx.ui.setStatus("subagent", undefined);
+          this.ctx.ui.setWidget("subagent", undefined);
         }
         reject(error);
       });

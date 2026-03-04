@@ -1,0 +1,73 @@
+import { Type, type Static } from "@sinclair/typebox";
+import { type ToolDefinition } from "@mariozechner/pi-coding-agent";
+import * as fs from "node:fs/promises";
+import * as path from "node:path";
+import { Container, Text } from "@mariozechner/pi-tui";
+
+const ReadReportParams = Type.Object({
+    fileName: Type.Optional(Type.String({ description: "The name of the report file to read. If not provided, lists all reports in the directory." })),
+});
+
+type ReadReportParams = Static<typeof ReadReportParams>;
+
+export const readReportTool: ToolDefinition<typeof ReadReportParams, { content?: string, files?: string[] }> = {
+    name: "readReport",
+    label: "Read Report",
+    description: "Reads a specific report from the reports directory, or lists available reports if no fileName is provided. Use this to read the details of what other sub-agents have done.",
+    parameters: ReadReportParams,
+
+    execute: async (toolCallId, params, signal, onUpdate, ctx) => {
+        const sessionId = ctx.sessionManager.getSessionId();
+        const reportsDir = path.join(process.cwd(), "sessions", sessionId, "reports");
+
+        try {
+            await fs.access(reportsDir);
+        } catch {
+            return {
+                content: [{ type: "text", text: "No reports found." }],
+                details: { files: [] }
+            };
+        }
+
+        if (params.fileName) {
+            const safeFileName = path.basename(params.fileName);
+            const filePath = path.join(reportsDir, safeFileName);
+            try {
+                const contentStr = await fs.readFile(filePath, "utf8");
+                return {
+                    content: [{ type: "text", text: contentStr }],
+                    details: { content: contentStr }
+                };
+            } catch (err: any) {
+                throw new Error(`Failed to read report ${safeFileName}: ${err.message}`);
+            }
+        } else {
+            const files = await fs.readdir(reportsDir);
+            return {
+                content: [{ type: "text", text: `Found ${files.length} reports: ${files.join(', ')}` }],
+                details: { files }
+            };
+        }
+    },
+
+    renderCall: (args, theme) => {
+        const container = new Container();
+        if (args.fileName) {
+            container.addChild(new Text(theme.fg("accent", `📖 Reading report: ${args.fileName}`), 0, 0));
+        } else {
+            container.addChild(new Text(theme.fg("accent", `📖 Listing reports`), 0, 0));
+        }
+        return container;
+    },
+
+    renderResult: (result, options, theme) => {
+        if (options.isPartial || !result) return undefined;
+        const container = new Container();
+        if (result.details.content) {
+            container.addChild(new Text(theme.fg("success", `✓ Read report (${result.details.content.length} chars)`), 0, 0));
+        } else if (result.details.files) {
+            container.addChild(new Text(theme.fg("success", `✓ Found ${result.details.files.length} reports`), 0, 0));
+        }
+        return container;
+    }
+};
