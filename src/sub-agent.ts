@@ -6,17 +6,9 @@ import {
   type AgentSessionEvent,
   type AgentToolUpdateCallback,
   type ExtensionContext,
-  bashTool,
-  editTool,
-  findTool,
-  grepTool,
-  lsTool,
-  readTool,
-  writeTool,
 } from "@mariozechner/pi-coding-agent";
 import { Subject, filter, map, type Observable } from "rxjs";
-
-export type SubAgentRole = "researcher" | "tester" | "reviewer" | "coder";
+import { getSubAgentSystemPrompt, getSubAgentTools, SubAgentRole } from "./sub-agents/index.js";
 
 export interface SubAgentCallStep {
   type: "call";
@@ -56,7 +48,6 @@ export interface SubAgentTranscript {
 export interface SubAgentConfig {
   role: SubAgentRole;
   cwd?: string;
-  systemPrompt?: string;
 }
 
 export interface SubAgentRunOptions {
@@ -65,37 +56,29 @@ export interface SubAgentRunOptions {
   onToolsExpandedChange?: (expanded: boolean) => void;
 }
 
-const ROLE_TOOLS: Record<SubAgentRole, readonly any[]> = {
-  researcher: [readTool, grepTool, findTool, lsTool, bashTool],
-  tester: [readTool, writeTool, bashTool, lsTool],
-  reviewer: [readTool, grepTool, lsTool],
-  coder: [readTool, writeTool, editTool, bashTool, lsTool],
-};
 
 export class SubAgent {
   private session!: AgentSession;
   private readonly eventListener = new Subject<AgentSessionEvent>();
   private readonly role: SubAgentRole;
   private readonly cwd: string;
-  private readonly customSystemPrompt: string | undefined;
 
   constructor(config: SubAgentConfig) {
     this.role = config.role;
     this.cwd = config.cwd ?? process.cwd();
-    this.customSystemPrompt = config.systemPrompt;
   }
 
   public async init(): Promise<void> {
     const resourceLoader = new DefaultResourceLoader({
       cwd: this.cwd,
-      ...(this.customSystemPrompt ? { systemPrompt: this.customSystemPrompt } : {}),
+      systemPrompt: await getSubAgentSystemPrompt(this.role)
     });
 
     const { session } = await createAgentSession({
       cwd: this.cwd,
       sessionManager: SessionManager.inMemory(),
       resourceLoader,
-      tools: [...ROLE_TOOLS[this.role]],
+      tools: getSubAgentTools(this.role),
     });
 
     this.session = session;

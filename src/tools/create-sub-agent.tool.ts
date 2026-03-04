@@ -2,7 +2,7 @@ import { StringEnum } from "@mariozechner/pi-ai";
 import { Type, type Static } from "@sinclair/typebox";
 import { type ToolDefinition } from "@mariozechner/pi-coding-agent";
 import { Container, Text } from "@mariozechner/pi-tui";
-import { SubAgent, type SubAgentRole, type SubAgentTranscript } from "../sub-agent.js";
+import { SubAgent, type SubAgentTranscript } from "../sub-agent.js";
 import { renderTranscript } from "./sub-agent-renderer/index.js";
 import {
   cacheTranscript,
@@ -13,14 +13,14 @@ import {
   registerSubAgentCall,
   setGlobalExpanded,
 } from "./sub-agent-ui-state.js";
+import { SubAgentRole } from "../sub-agents/index.js";
 
-const SubAgentRoleSchema = StringEnum(["researcher", "tester", "reviewer", "coder"] as const, {
+const SubAgentRoleSchema = StringEnum(Object.values(SubAgentRole), {
   description: "Specialization of the sub-agent",
 });
 
 const SubAgentParams = Type.Object({
   role: SubAgentRoleSchema,
-  systemPrompt: Type.Optional(Type.String({ description: "Custom system prompt for the sub-agent" })),
   prompt: Type.String({ description: "The task to send to the sub-agent" }),
 });
 
@@ -37,9 +37,8 @@ export const subAgentTool: ToolDefinition<typeof SubAgentParams, SubAgentTranscr
     registerSubAgentCall(toolCallId, params);
 
     const subAgent = new SubAgent({
-      role: params.role as SubAgentRole,
+      role: params.role,
       cwd: ctx.cwd,
-      ...(params.systemPrompt ? { systemPrompt: params.systemPrompt } : {}),
     });
 
     await subAgent.init();
