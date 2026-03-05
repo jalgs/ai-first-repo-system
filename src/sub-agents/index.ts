@@ -3,7 +3,9 @@ import type { Tool } from "@mariozechner/pi-ai";
 import { codingTools, readOnlyTools } from "@mariozechner/pi-coding-agent";
 import { writeReportTool } from "../tools/write-report.tool.js";
 import * as fs from "node:fs";
+import * as path from 'node:path'
 import { readReportTool } from "../tools/read-report.tool.js";
+import { fileURLToPath } from "node:url";
 
 export enum SubAgentRole {
   Researcher = "researcher",
@@ -15,6 +17,9 @@ export enum SubAgentRole {
 type SubAgentConfig = {
   tools: Tool[];
 };
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 const SUB_AGENTS_MAP: Record<SubAgentRole, SubAgentConfig> = {
   [SubAgentRole.Researcher]: {
@@ -36,7 +41,7 @@ export function getSubAgentTools(role: SubAgentRole): AgentTool[] {
 }
 
 export async function getSubAgentSystemPrompt(role: SubAgentRole): Promise<string> {
-  const prompt = fs.readFileSync("./src/prompts/" + role + ".md", {
+  const prompt = fs.readFileSync(path.join(__dirname, "prompts/" + role + ".md"), {
     encoding: "utf8",
   });
   return prompt;

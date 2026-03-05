@@ -11,9 +11,12 @@ import { filter, map, Observable, Subject } from "rxjs";
 import { subAgentTool } from "./tools/create-sub-agent.tool.js";
 import { readReportTool } from "./tools/read-report.tool.js";
 import *  as fs from 'node:fs'
+import * as path from 'node:path'
+import { fileURLToPath } from "node:url";
 
-
-const SYSTEM_PROMPT = fs.readFileSync('./src/prompts/director.md', {
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+const SYSTEM_PROMPT = fs.readFileSync(path.join(__dirname, 'prompts/director.md'), {
   encoding: 'utf8'
 })
 
