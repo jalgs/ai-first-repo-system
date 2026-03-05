@@ -41,7 +41,7 @@ export function getSubAgentTools(role: SubAgentRole): AgentTool[] {
 }
 
 export async function getSubAgentSystemPrompt(role: SubAgentRole): Promise<string> {
-  const prompt = fs.readFileSync(path.join(__dirname, "prompts/" + role + ".md"), {
+  const prompt = fs.readFileSync(path.join(__dirname, "../prompts/" + role + ".md"), {
     encoding: "utf8",
   });
   return prompt;
