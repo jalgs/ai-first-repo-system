@@ -86,21 +86,9 @@ export class SubAgent {
 
     await resourceLoader.reload();
 
-    const subSessionManager = SessionManager.inMemory(this.cwd);
-    const parentSessionId = this.ctx?.sessionManager.getSessionId();
-
-    if (parentSessionId) {
-      // Keep sub-agent session isolated but reuse the parent's sessionId for provider caching.
-      const header = subSessionManager.getHeader();
-      if (header) {
-        header.id = parentSessionId;
-      }
-      (subSessionManager as unknown as { sessionId: string }).sessionId = parentSessionId;
-    }
-
     const { session } = await createAgentSession({
       cwd: this.cwd,
-      sessionManager: subSessionManager,
+      sessionManager: SessionManager.inMemory(this.cwd),
       resourceLoader,
       tools: [],
       ...this.ctx?.model ? { model: this.ctx.model } : {},

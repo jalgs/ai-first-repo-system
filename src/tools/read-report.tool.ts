@@ -26,7 +26,7 @@ export const readReportTool: ToolDefinition<
   parameters: ReadReportParams,
 
   execute: async (toolCallId, params, signal, onUpdate, ctx) => {
-    const sessionId = ctx.sessionManager.getSessionId();
+    const sessionId = process.env['SESSION_ID'] as string
     const reportsDir = path.join(process.cwd(), "sessions", sessionId, "reports");
 
     if (params.fileName) {

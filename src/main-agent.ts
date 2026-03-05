@@ -20,6 +20,11 @@ const SYSTEM_PROMPT = fs.readFileSync('./src/prompts/director.md', {
 const subAgentExtension: ExtensionFactory = (pi) => {
   pi.registerTool(subAgentTool);
   pi.registerTool(readReportTool);
+
+  pi.on('session_switch', (_, ctx) => {
+    const sessionId = ctx.sessionManager.getSessionId()
+    process.env['SESSION_ID'] = sessionId
+  })
 };
 
 class MainAgent {
@@ -43,6 +48,10 @@ class MainAgent {
     });
 
     this.session = session;
+
+    const sessionId = this.session.sessionManager.getSessionId()
+    process.env['SESSION_ID'] = sessionId
+
     this.session.subscribe((event) => {
       this.eventListener.next(event);
     });
