@@ -1,11 +1,11 @@
 import type { AgentTool } from "@mariozechner/pi-agent-core";
 import type { Tool } from "@mariozechner/pi-ai";
-import { codingTools, readOnlyTools } from "@mariozechner/pi-coding-agent";
 import { writeReportTool } from "../tools/write-report.tool.js";
 import * as fs from "node:fs";
 import * as path from 'node:path'
 import { readReportTool } from "../tools/read-report.tool.js";
 import { fileURLToPath } from "node:url";
+import { createRestrictedTools } from "../tools/restricted-tools.js";
 
 export enum SubAgentRole {
   Researcher = "researcher",
@@ -21,18 +21,31 @@ type SubAgentConfig = {
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
+const {
+  read,
+  ls,
+  find,
+  grep,
+  write,
+  edit,
+  bash,
+} = createRestrictedTools(process.cwd())
+
+const readonlyTools = [read, ls, find, grep]
+const codingTools = [...readonlyTools, write, edit, bash]
+
 const SUB_AGENTS_MAP: Record<SubAgentRole, SubAgentConfig> = {
   [SubAgentRole.Researcher]: {
-    tools: [...readOnlyTools, writeReportTool, readReportTool],
+    tools: [...readonlyTools, writeReportTool, readReportTool],
   },
   [SubAgentRole.Planner]: {
-    tools: [...readOnlyTools, writeReportTool, readReportTool],
+    tools: [...readonlyTools, writeReportTool, readReportTool],
   },
   [SubAgentRole.Developer]: {
     tools: [...codingTools, writeReportTool, readReportTool],
   },
   [SubAgentRole.Validator]: {
-    tools: [...readOnlyTools, writeReportTool, readReportTool],
+    tools: [...readonlyTools, writeReportTool, readReportTool],
   },
 };
 
