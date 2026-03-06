@@ -14,6 +14,7 @@ import {
   setGlobalExpanded,
 } from "./sub-agent-ui-state.js";
 import { SubAgentRole } from "../sub-agents/index.js";
+import { Logger } from "../utiils/logger.js";
 
 const SubAgentRoleSchema = StringEnum(Object.values(SubAgentRole), {
   description: "Specialization of the sub-agent",
@@ -22,6 +23,7 @@ const SubAgentRoleSchema = StringEnum(Object.values(SubAgentRole), {
 const SubAgentParams = Type.Object({
   role: SubAgentRoleSchema,
   prompt: Type.String({ description: "The task to send to the sub-agent" }),
+  sessionId: Type.String({ description: "When provided it resume a previous existing agent" })
 });
 
 type SubAgentParams = Static<typeof SubAgentParams>;

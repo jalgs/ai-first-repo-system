@@ -3,6 +3,7 @@ import { type ToolDefinition } from "@mariozechner/pi-coding-agent";
 import * as fs from "node:fs/promises";
 import * as path from "node:path";
 import { Container, Text } from "@mariozechner/pi-tui";
+import { SessionRegistryManager } from "../sub-agents/session-registry.js";
 
 const ReadReportParams = Type.Object({
   fileName: Type.Optional(
@@ -26,7 +27,7 @@ export const readReportTool: ToolDefinition<
   parameters: ReadReportParams,
 
   execute: async (toolCallId, params, signal, onUpdate, ctx) => {
-    const sessionId = process.env['SESSION_ID'] as string
+    const sessionId = SessionRegistryManager.current()
     const reportsDir = path.join(process.cwd(), "sessions", sessionId, "reports");
 
     if (params.fileName) {

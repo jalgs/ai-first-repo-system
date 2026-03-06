@@ -5,10 +5,13 @@ import {
   SessionManager,
   type AgentSessionEvent,
   type AgentToolUpdateCallback,
+  type ExtensionAPI,
   type ExtensionContext,
 } from "@mariozechner/pi-coding-agent";
 import { Subject, filter, map, type Observable } from "rxjs";
 import { getSubAgentSystemPrompt, getSubAgentTools, SubAgentRole } from "./sub-agents/index.js";
+import { Logger } from "./utiils/logger.js";
+import { SessionRegistryManager } from "./sub-agents/session-registry.js";
 
 export interface SubAgentCallStep {
   type: "call";
@@ -48,6 +51,7 @@ export interface SubAgentTranscript {
 export interface SubAgentConfig {
   role: SubAgentRole;
   ctx?: ExtensionContext
+  sessionDir?: string
 }
 
 export interface SubAgentRunOptions {
@@ -63,11 +67,13 @@ export class SubAgent {
   private readonly role: SubAgentRole;
   private readonly cwd: string;
   private readonly ctx?: ExtensionContext
+  private sessionDir?: string | undefined
 
   constructor(config: SubAgentConfig) {
     this.role = config.role;
     if (config.ctx) this.ctx = config.ctx;
     this.cwd = config.ctx?.cwd ?? process.cwd();
+    this.sessionDir = config.sessionDir
   }
 
   public async init(): Promise<void> {
@@ -76,28 +82,42 @@ export class SubAgent {
     const resourceLoader = new DefaultResourceLoader({
       cwd: this.cwd,
       systemPromptOverride: base => `${base}\n\n${systemPrompt}`,
-      extensionFactories: [pi => {
-        const tools = getSubAgentTools(this.role)
-        for (const tool of tools) {
-          pi.registerTool(tool)
-        }
-      }]
+      extensionFactories: [this.subAgentExtension.bind(this)],
     });
 
     await resourceLoader.reload();
 
+    const sessionManager = this.sessionDir
+      ? SessionManager.continueRecent(this.cwd, this.sessionDir)
+      : SessionManager.create(this.cwd)
+
     const { session } = await createAgentSession({
       cwd: this.cwd,
-      sessionManager: SessionManager.inMemory(this.cwd),
+      sessionManager,
       resourceLoader,
       tools: [],
       ...this.ctx?.model ? { model: this.ctx.model } : {},
     });
 
     this.session = session;
+
+    SessionRegistryManager.register({
+      sessionId: this.session.sessionManager.getSessionId(),
+      sessionFile: this.session.sessionManager.getSessionFile() as string,
+      role: this.role,
+    })
+
     this.session.subscribe((event) => {
       this.eventListener.next(event);
     });
+
+  }
+
+  private subAgentExtension(pi: ExtensionAPI) {
+    const tools = getSubAgentTools(this.role)
+    for (const tool of tools) {
+      pi.registerTool(tool)
+    }
   }
 
   public listen<T extends AgentSessionEvent["type"]>(

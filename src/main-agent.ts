@@ -5,6 +5,7 @@ import {
   InteractiveMode,
   SessionManager,
   type AgentSessionEvent,
+  type ExtensionAPI,
   type ExtensionFactory,
 } from "@mariozechner/pi-coding-agent";
 import { filter, map, Observable, Subject } from "rxjs";
@@ -13,22 +14,15 @@ import { readReportTool } from "./tools/read-report.tool.js";
 import *  as fs from 'node:fs'
 import * as path from 'node:path'
 import { fileURLToPath } from "node:url";
+import { Logger } from "./utiils/logger.js";
+import { SessionRegistryManager } from "./sub-agents/session-registry.js";
+import { listSubAgentSessions } from "./tools/list-sub-agents-sessions.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const SYSTEM_PROMPT = fs.readFileSync(path.join(__dirname, 'prompts/director.md'), {
   encoding: 'utf8'
 })
-
-const subAgentExtension: ExtensionFactory = (pi) => {
-  pi.registerTool(subAgentTool);
-  pi.registerTool(readReportTool);
-
-  pi.on('session_switch', (_, ctx) => {
-    const sessionId = ctx.sessionManager.getSessionId()
-    process.env['SESSION_ID'] = sessionId
-  })
-};
 
 class MainAgent {
   private session!: AgentSession;
@@ -39,7 +33,7 @@ class MainAgent {
     const resourceLoader = new DefaultResourceLoader({
       cwd: process.cwd(),
       systemPromptOverride: base => `${base}\n\n${SYSTEM_PROMPT}`,
-      extensionFactories: [subAgentExtension],
+      extensionFactories: [this.subAgentExtension.bind(this)],
     });
 
     await resourceLoader.reload();
@@ -52,15 +46,46 @@ class MainAgent {
 
     this.session = session;
 
-    const sessionId = this.session.sessionManager.getSessionId()
-    process.env['SESSION_ID'] = sessionId
-
     this.session.subscribe((event) => {
-      this.eventListener.next(event);
+      // ...
     });
 
     const interactiveMode = new InteractiveMode(this.session);
     await interactiveMode.run();
+
+  }
+
+
+
+  private registerSession() {
+    SessionRegistryManager.setCurrent(this.session.sessionManager.getSessionId())
+  }
+
+  private subAgentExtension(pi: ExtensionAPI) {
+    pi.registerTool(subAgentTool);
+    pi.registerTool(readReportTool);
+    pi.registerTool(listSubAgentSessions)
+
+      pi.on('session_switch', (_, ctx) => {
+        this.registerSession()
+
+      Logger.log({
+        sessionId: ctx.sessionManager.getSessionId(),
+        sessionDir: ctx.sessionManager.getSessionDir(),
+        sessionFile: ctx.sessionManager.getSessionFile(),
+      })
+    })
+
+    pi.on('session_start', (_, ctx) => {
+      this.registerSession()
+
+      Logger.log({
+        sessionId: ctx.sessionManager.getSessionId(),
+        sessionDir: ctx.sessionManager.getSessionDir(),
+        sessionFile: ctx.sessionManager.getSessionFile(),
+      })
+    })
+    
   }
 
   public listen<T extends AgentSessionEvent["type"]>(
