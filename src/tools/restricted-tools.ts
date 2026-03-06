@@ -125,6 +125,7 @@ const BLOCKED_BASH_PATTERNS: RegExp[] = [
   /\bgit\s+rebase\b/,         // rebase interactivo o no
   /\bgit\s+filter-branch\b/,  // reescritura masiva legacy
   /\bgit\s+filter-repo\b/,    // reescritura masiva moderna
+  /\bgit\s+commit\b/,   // cualquier git commit (incluye --amend, -m, etc.)
   /\bgit\s+commit\s+.*--amend\b/, // modificar commit ya hecho
   /\bgit\s+add\b/,    // cualquier git add
 
