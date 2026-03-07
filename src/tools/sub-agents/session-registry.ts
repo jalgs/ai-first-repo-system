@@ -1,11 +1,11 @@
 import * as fs from "node:fs";
 import * as path from "node:path";
-import type { SubAgentRole } from "./index.js";
 
 export type SessionRegistry = {
   sessionId: string;
   sessionFile: string;
-  role: SubAgentRole;
+  name: string;
+  role: string;
 };
 
 export class SessionRegistryManager {
@@ -56,7 +56,7 @@ export class SessionRegistryManager {
     return JSON.parse(raw);
   }
 
-  static getByRole(role: SubAgentRole): SessionRegistry | undefined {
+  static getByRole(role: string): SessionRegistry | undefined {
     return SessionRegistryManager.list().find((s) => s.role === role);
   }
 

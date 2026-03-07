@@ -1,3 +1,6 @@
+import * as fs from "node:fs";
+import * as path from "node:path";
+import { fileURLToPath } from "node:url";
 import {
   AgentSession,
   createAgentSession,
@@ -9,12 +12,10 @@ import {
   type ExtensionContext,
 } from "@mariozechner/pi-coding-agent";
 import { Subject, filter, map, type Observable } from "rxjs";
-import {
-  getSubAgentSystemPrompt,
-  getSubAgentTools,
-  SubAgentRole,
-} from "./sub-agents/index.js";
-import { SessionRegistryManager } from "./sub-agents/session-registry.js";
+import { SessionRegistryManager } from "./session-registry.js";
+import { Logger } from "../../utils/logger.js";
+import type { Tool } from "@mariozechner/pi-ai";
+import type { AgentTool } from "@mariozechner/pi-agent-core";
 
 export interface SubAgentCallStep {
   type: "call";
@@ -51,8 +52,10 @@ export interface SubAgentTranscript {
   steps: SubAgentStep[];
 }
 
-export interface SubAgentConfig {
+export interface SubAgentConfig<SubAgentRole extends string> {
+  name: string;
   role: SubAgentRole;
+  tools: Tool[];
   ctx?: ExtensionContext;
   sessionDir?: string | undefined;
 }
@@ -63,23 +66,30 @@ export interface SubAgentRunOptions {
   onToolsExpandedChange?: (expanded: boolean) => void;
 }
 
-export class SubAgent {
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+export class SubAgent<SubAgentRole extends string> {
   private session!: AgentSession;
   private readonly eventListener = new Subject<AgentSessionEvent>();
+  private readonly name: string;
   private readonly role: SubAgentRole;
+  private readonly tools: AgentTool[];
   private readonly cwd: string;
   private readonly ctx?: ExtensionContext;
   private sessionDir?: string | undefined;
 
-  constructor(config: SubAgentConfig) {
+  constructor(config: SubAgentConfig<SubAgentRole>) {
+    this.name = config.name;
     this.role = config.role;
+    this.tools = config.tools as AgentTool[];
     if (config.ctx) this.ctx = config.ctx;
     this.cwd = config.ctx?.cwd ?? process.cwd();
     this.sessionDir = config.sessionDir;
   }
 
   public async init(): Promise<void> {
-    const systemPrompt = await getSubAgentSystemPrompt(this.role);
+    const systemPrompt = await this.getSystemPrompt(this.role);
 
     const resourceLoader = new DefaultResourceLoader({
       cwd: this.cwd,
@@ -106,6 +116,7 @@ export class SubAgent {
     SessionRegistryManager.register({
       sessionId: this.session.sessionManager.getSessionId(),
       sessionFile: this.session.sessionManager.getSessionFile() as string,
+      name: this.name,
       role: this.role,
     });
 
@@ -114,10 +125,49 @@ export class SubAgent {
     });
   }
 
+  private getSystemPrompt(role: SubAgentRole): string {
+    const prompt = fs.readFileSync(
+      path.join(__dirname, "../../prompts/" + role + ".md"),
+      {
+        encoding: "utf8",
+      }
+    );
+    return prompt;
+  }
+
   private subAgentExtension(pi: ExtensionAPI) {
-    const tools = getSubAgentTools(this.role);
-    for (const tool of tools) {
+    let isCompacting = false;
+    for (const tool of this.tools) {
       pi.registerTool(tool);
+      pi.on("turn_end", (_, ctx) => {
+        if (isCompacting) return;
+        const contextUsage = ctx.getContextUsage();
+        if (!contextUsage) return;
+        const { percent } = contextUsage;
+        Logger.log({ percent });
+        if (percent && percent >= 2) {
+          Logger.log("compacting");
+          isCompacting = true;
+          if (this.ctx?.hasUI)
+            this.ctx?.ui.setWidget("subagent", ["Compacting Context..."]);
+          ctx.compact({
+            //customInstructions: '',
+            onComplete: () => {
+              isCompacting = false;
+              if (this.ctx?.hasUI)
+                this.ctx?.ui.setWidget("subagent", [
+                  "Context Compacted. Resuming Session...",
+                ]);
+            },
+            onError: (err) => {
+              isCompacting = false;
+              this.ctx?.ui.setWidget("subagent", [
+                `Compaction Error: ${err.message}`,
+              ]);
+            },
+          });
+        }
+      });
     }
   }
 
@@ -261,6 +311,8 @@ export class SubAgent {
             notifyUpdate();
             break;
 
+          case "turn_end":
+            break;
           case "agent_end": {
             if (settled) return;
             settled = true;

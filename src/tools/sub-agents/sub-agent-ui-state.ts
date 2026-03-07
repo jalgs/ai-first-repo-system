@@ -1,4 +1,4 @@
-import type { SubAgentTranscript } from "../sub-agent.js";
+import type { SubAgentTranscript } from "./sub-agent.js";
 
 export interface SubAgentCallIdentity {
   role: string;

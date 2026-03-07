@@ -6,7 +6,7 @@ import {
   type ThemeColor,
 } from "@mariozechner/pi-coding-agent";
 import { shortenPath, replaceTabs, renderOutputLines } from "./utils.js";
-import type { SubAgentResultStep } from "../../sub-agent.js";
+import type { SubAgentResultStep } from "../sub-agent.js";
 
 type ToolRenderContext = {
   args: Record<string, unknown>;

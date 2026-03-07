@@ -3,8 +3,8 @@ import type { ToolDefinition } from "@mariozechner/pi-coding-agent";
 import {
   SessionRegistryManager,
   type SessionRegistry,
-} from "../sub-agents/session-registry.js";
-import { Logger } from "../utils/logger.js";
+} from "./session-registry.js";
+import { Logger } from "../../utils/logger.js";
 import { Container, Text } from "@mariozechner/pi-tui";
 
 const ListSubAgentSessions = Type.Object({});
@@ -53,9 +53,7 @@ export const listSubAgentSessions: ToolDefinition<
         theme.fg(
           "accent",
           result.details.length
-            ? result.details
-                .map((sa) => `${sa.role}: ${sa.sessionId}`)
-                .join("\n")
+            ? result.details.map((sa) => `${sa.name}: ${sa.role}`).join("\n")
             : "No Sub Agents found"
         ),
         0,

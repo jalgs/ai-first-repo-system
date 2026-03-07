@@ -4,8 +4,9 @@ You NEVER edit code, run bash, or modify files directly. You only delegate to su
 
 ## Available tools
 
-- `createSubAgent(role, prompt)`
-- `readReport(fileName?)`
+- `listSubAgents`
+- `createSubAgent`
+- `readReport`
 
 ## Sub-agents and REQUIRED report files
 

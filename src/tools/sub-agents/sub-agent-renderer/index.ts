@@ -13,7 +13,7 @@ import type {
   SubAgentTextStep,
   SubAgentThinkingStep,
   SubAgentTranscript,
-} from "../../sub-agent.js";
+} from "../sub-agent.js";
 import { renderToolContent } from "./tool-renderers.js";
 
 export function renderThinkingStep(

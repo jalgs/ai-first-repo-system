@@ -3,7 +3,7 @@ import { type ToolDefinition } from "@mariozechner/pi-coding-agent";
 import * as fs from "node:fs/promises";
 import * as path from "node:path";
 import { Container, Text } from "@mariozechner/pi-tui";
-import { SessionRegistryManager } from "../sub-agents/session-registry.js";
+import { SessionRegistryManager } from "./sub-agents/session-registry.js";
 
 const ReadReportParams = Type.Object({
   fileName: Type.Optional(
