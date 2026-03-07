@@ -24,7 +24,9 @@ export function renderOutputLines(
   const useThemeColor = options?.useThemeColor ?? false;
   toolBox.addChild(new Text("", 0, 0));
   for (const line of lines) {
-    const styled = useThemeColor ? theme.fg("toolOutput" as ThemeColor, line) : line;
+    const styled = useThemeColor
+      ? theme.fg("toolOutput" as ThemeColor, line)
+      : line;
     toolBox.addChild(new Text(styled, 0, 0));
   }
 }

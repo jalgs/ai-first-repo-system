@@ -27,8 +27,13 @@ export const readReportTool: ToolDefinition<
   parameters: ReadReportParams,
 
   execute: async (toolCallId, params, signal, onUpdate, ctx) => {
-    const sessionId = SessionRegistryManager.current()
-    const reportsDir = path.join(process.cwd(), "sessions", sessionId, "reports");
+    const sessionId = SessionRegistryManager.current();
+    const reportsDir = path.join(
+      process.cwd(),
+      "sessions",
+      sessionId,
+      "reports"
+    );
 
     if (params.fileName) {
       const safeFileName = path.basename(params.fileName);
@@ -40,13 +45,20 @@ export const readReportTool: ToolDefinition<
           details: { content: contentStr },
         };
       } catch (err: any) {
-        throw new Error(`Failed to read report ${safeFileName}: ${err.message}`);
+        throw new Error(
+          `Failed to read report ${safeFileName}: ${err.message}`
+        );
       }
     }
 
     const files = await fs.readdir(reportsDir);
     return {
-      content: [{ type: "text", text: `Found ${files.length} reports: ${files.join(", ")}` }],
+      content: [
+        {
+          type: "text",
+          text: `Found ${files.length} reports: ${files.join(", ")}`,
+        },
+      ],
       details: { files },
     };
   },
@@ -55,10 +67,16 @@ export const readReportTool: ToolDefinition<
     const container = new Container();
     if (args.fileName) {
       container.addChild(
-        new Text(theme.fg("accent", `📖 Reading report: ${args.fileName}`), 0, 0)
+        new Text(
+          theme.fg("accent", `📖 Reading report: ${args.fileName}`),
+          0,
+          0
+        )
       );
     } else {
-      container.addChild(new Text(theme.fg("accent", "📖 Listing reports"), 0, 0));
+      container.addChild(
+        new Text(theme.fg("accent", "📖 Listing reports"), 0, 0)
+      );
     }
     return container;
   },
@@ -69,14 +87,21 @@ export const readReportTool: ToolDefinition<
     if (result.details.content) {
       container.addChild(
         new Text(
-          theme.fg("success", `✓ Read report (${result.details.content.length} chars)`),
+          theme.fg(
+            "success",
+            `✓ Read report (${result.details.content.length} chars)`
+          ),
           0,
           0
         )
       );
     } else if (result.details.files) {
       container.addChild(
-        new Text(theme.fg("success", `✓ Found ${result.details.files.length} reports`), 0, 0)
+        new Text(
+          theme.fg("success", `✓ Found ${result.details.files.length} reports`),
+          0,
+          0
+        )
       );
     }
     return container;

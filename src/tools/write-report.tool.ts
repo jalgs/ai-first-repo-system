@@ -28,8 +28,13 @@ export const writeReportTool: ToolDefinition<
   parameters: WriteReportParams,
 
   execute: async (toolCallId, params, signal, onUpdate, ctx) => {
-    const sessionId = SessionRegistryManager.current()
-    const reportsDir = path.join(process.cwd(), "sessions", sessionId, "reports");
+    const sessionId = SessionRegistryManager.current();
+    const reportsDir = path.join(
+      process.cwd(),
+      "sessions",
+      sessionId,
+      "reports"
+    );
 
     const safeFileName = path.basename(params.fileName);
     const filePath = path.join(reportsDir, safeFileName);
@@ -37,7 +42,10 @@ export const writeReportTool: ToolDefinition<
     await fs.mkdir(reportsDir, { recursive: true });
 
     try {
-      await fs.writeFile(filePath, params.content, { encoding: "utf8", flag: "wx" });
+      await fs.writeFile(filePath, params.content, {
+        encoding: "utf8",
+        flag: "wx",
+      });
     } catch (error: any) {
       if (error?.code === "EEXIST") {
         throw new Error(
@@ -48,14 +56,18 @@ export const writeReportTool: ToolDefinition<
     }
 
     return {
-      content: [{ type: "text", text: `Successfully created report at ${filePath}` }],
+      content: [
+        { type: "text", text: `Successfully created report at ${filePath}` },
+      ],
       details: { success: true, path: filePath, mode: "created" },
     };
   },
 
   renderCall: (args, theme) => {
     const container = new Container();
-    container.addChild(new Text(theme.fg("accent", `✍️ Writing report: ${args.fileName}`), 0, 0));
+    container.addChild(
+      new Text(theme.fg("accent", `✍️ Writing report: ${args.fileName}`), 0, 0)
+    );
     return container;
   },
 
@@ -63,7 +75,11 @@ export const writeReportTool: ToolDefinition<
     if (options.isPartial || !result) return undefined;
     const container = new Container();
     container.addChild(
-      new Text(theme.fg("success", `✓ Report created at ${result.details.path}`), 0, 0)
+      new Text(
+        theme.fg("success", `✓ Report created at ${result.details.path}`),
+        0,
+        0
+      )
     );
     return container;
   },

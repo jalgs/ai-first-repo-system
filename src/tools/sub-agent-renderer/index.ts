@@ -1,5 +1,11 @@
 import { Container, Text, Box, Spacer, Markdown } from "@mariozechner/pi-tui";
-import { getMarkdownTheme, keyHint, DynamicBorder, type Theme, type ThemeColor } from "@mariozechner/pi-coding-agent";
+import {
+  getMarkdownTheme,
+  keyHint,
+  DynamicBorder,
+  type Theme,
+  type ThemeColor,
+} from "@mariozechner/pi-coding-agent";
 import type {
   SubAgentCallStep,
   SubAgentResultStep,
@@ -24,12 +30,21 @@ export function renderThinkingStep(
   const displayLines = thinkingLines.slice(0, maxLines);
 
   for (const line of displayLines) {
-    thinkingBox.addChild(new Text(theme.italic(theme.fg("thinkingText", line)), 0, 0));
+    thinkingBox.addChild(
+      new Text(theme.italic(theme.fg("thinkingText", line)), 0, 0)
+    );
   }
 
   if (!expanded && thinkingLines.length > maxLines) {
     thinkingBox.addChild(
-      new Text(theme.fg("muted", `... (${thinkingLines.length - maxLines} more lines)`), 0, 0)
+      new Text(
+        theme.fg(
+          "muted",
+          `... (${thinkingLines.length - maxLines} more lines)`
+        ),
+        0,
+        0
+      )
     );
   }
 
@@ -57,7 +72,13 @@ export function renderTextStep(
       container.addChild(new Text(theme.fg("text", truncated), 1, 0));
     }
     if (lines.length > maxLines) {
-      container.addChild(new Text(theme.fg("muted", `... (${lines.length - maxLines} more lines)`), 1, 0));
+      container.addChild(
+        new Text(
+          theme.fg("muted", `... (${lines.length - maxLines} more lines)`),
+          1,
+          0
+        )
+      );
     }
   }
   container.addChild(new Spacer(1));
@@ -85,7 +106,11 @@ export function renderToolWithResult(
 
   const toolBox = new Box(1, 1, bgFn);
   const statusIcon = !hasResult ? "◐" : isError ? "✗" : "✓";
-  const statusColor: ThemeColor = !hasResult ? "muted" : isError ? "error" : "success";
+  const statusColor: ThemeColor = !hasResult
+    ? "muted"
+    : isError
+      ? "error"
+      : "success";
 
   renderToolContent(
     toolName,
@@ -112,7 +137,9 @@ export function renderTranscript(
 
   if (!details?.steps?.length) {
     const empty = new Container();
-    empty.addChild(new Text(theme.fg("muted", "  Initializing sub-agent..."), 1, 0));
+    empty.addChild(
+      new Text(theme.fg("muted", "  Initializing sub-agent..."), 1, 0)
+    );
     return empty;
   }
 
@@ -130,7 +157,13 @@ export function renderTranscript(
   );
 
   if (!expanded) {
-    headerBox.addChild(new Text(theme.fg("muted", `  (${keyHint("expandTools", "to expand")})`), 0, 0));
+    headerBox.addChild(
+      new Text(
+        theme.fg("muted", `  (${keyHint("expandTools", "to expand")})`),
+        0,
+        0
+      )
+    );
   }
 
   container.addChild(headerBox);
@@ -161,18 +194,27 @@ export function renderTranscript(
         if (resultStep) {
           processedResultCallIds.add(step.toolCallId);
         }
-        container.addChild(renderToolWithResult(step, resultStep, theme, expanded));
+        container.addChild(
+          renderToolWithResult(step, resultStep, theme, expanded)
+        );
         container.addChild(new Spacer(1));
         break;
       }
       case "result":
         if (!processedResultCallIds.has(step.toolCallId)) {
-          container.addChild(renderToolWithResult({
-            type: "call",
-            toolCallId: step.toolCallId,
-            toolName: step.toolName,
-            args: {},
-          }, step, theme, expanded));
+          container.addChild(
+            renderToolWithResult(
+              {
+                type: "call",
+                toolCallId: step.toolCallId,
+                toolName: step.toolName,
+                args: {},
+              },
+              step,
+              theme,
+              expanded
+            )
+          );
           container.addChild(new Spacer(1));
           processedResultCallIds.add(step.toolCallId);
         }

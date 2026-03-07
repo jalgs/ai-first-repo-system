@@ -9,8 +9,12 @@ import {
   type ExtensionContext,
 } from "@mariozechner/pi-coding-agent";
 import { Subject, filter, map, type Observable } from "rxjs";
-import { getSubAgentSystemPrompt, getSubAgentTools, SubAgentRole } from "./sub-agents/index.js";
-import { Logger } from "./utiils/logger.js";
+import {
+  getSubAgentSystemPrompt,
+  getSubAgentTools,
+  SubAgentRole,
+} from "./sub-agents/index.js";
+import { Logger } from "./utils/logger.js";
 import { SessionRegistryManager } from "./sub-agents/session-registry.js";
 
 export interface SubAgentCallStep {
@@ -50,8 +54,8 @@ export interface SubAgentTranscript {
 
 export interface SubAgentConfig {
   role: SubAgentRole;
-  ctx?: ExtensionContext
-  sessionDir?: string
+  ctx?: ExtensionContext;
+  sessionDir?: string;
 }
 
 export interface SubAgentRunOptions {
@@ -60,28 +64,27 @@ export interface SubAgentRunOptions {
   onToolsExpandedChange?: (expanded: boolean) => void;
 }
 
-
 export class SubAgent {
   private session!: AgentSession;
   private readonly eventListener = new Subject<AgentSessionEvent>();
   private readonly role: SubAgentRole;
   private readonly cwd: string;
-  private readonly ctx?: ExtensionContext
-  private sessionDir?: string | undefined
+  private readonly ctx?: ExtensionContext;
+  private sessionDir?: string | undefined;
 
   constructor(config: SubAgentConfig) {
     this.role = config.role;
     if (config.ctx) this.ctx = config.ctx;
     this.cwd = config.ctx?.cwd ?? process.cwd();
-    this.sessionDir = config.sessionDir
+    this.sessionDir = config.sessionDir;
   }
 
   public async init(): Promise<void> {
-    const systemPrompt = await getSubAgentSystemPrompt(this.role)
+    const systemPrompt = await getSubAgentSystemPrompt(this.role);
 
     const resourceLoader = new DefaultResourceLoader({
       cwd: this.cwd,
-      systemPromptOverride: base => `${base}\n\n${systemPrompt}`,
+      systemPromptOverride: (base) => `${base}\n\n${systemPrompt}`,
       extensionFactories: [this.subAgentExtension.bind(this)],
     });
 
@@ -89,14 +92,14 @@ export class SubAgent {
 
     const sessionManager = this.sessionDir
       ? SessionManager.continueRecent(this.cwd, this.sessionDir)
-      : SessionManager.create(this.cwd)
+      : SessionManager.create(this.cwd);
 
     const { session } = await createAgentSession({
       cwd: this.cwd,
       sessionManager,
       resourceLoader,
       tools: [],
-      ...this.ctx?.model ? { model: this.ctx.model } : {},
+      ...(this.ctx?.model ? { model: this.ctx.model } : {}),
     });
 
     this.session = session;
@@ -105,27 +108,26 @@ export class SubAgent {
       sessionId: this.session.sessionManager.getSessionId(),
       sessionFile: this.session.sessionManager.getSessionFile() as string,
       role: this.role,
-    })
+    });
 
     this.session.subscribe((event) => {
       this.eventListener.next(event);
     });
-
   }
 
   private subAgentExtension(pi: ExtensionAPI) {
-    const tools = getSubAgentTools(this.role)
+    const tools = getSubAgentTools(this.role);
     for (const tool of tools) {
-      pi.registerTool(tool)
+      pi.registerTool(tool);
     }
   }
 
   public listen<T extends AgentSessionEvent["type"]>(
-    type: T,
+    type: T
   ): Observable<AgentSessionEvent & { type: T }> {
     return this.eventListener.pipe(
       filter((event) => event.type === type),
-      map((event) => event as AgentSessionEvent & { type: T }),
+      map((event) => event as AgentSessionEvent & { type: T })
     );
   }
 
@@ -138,14 +140,16 @@ export class SubAgent {
       throw new Error("SubAgent not initialized. Call init() first.");
     }
 
-
     const transcript: SubAgentTranscript = { steps: [] };
     let currentAssistantText = "";
 
     const updateUI = (status: string, widgetLines?: string[]) => {
       if (!this.ctx?.hasUI) return;
 
-      const accent = this.ctx.ui.theme.fg("accent", `● [Sub-Agent: ${this.role}] ${status}`);
+      const accent = this.ctx.ui.theme.fg(
+        "accent",
+        `● [Sub-Agent: ${this.role}] ${status}`
+      );
       this.ctx.ui.setStatus("subagent", accent);
 
       if (widgetLines) {
@@ -159,7 +163,9 @@ export class SubAgent {
       }
 
       if (options?.toolCallId && options.onTranscript) {
-        options.onTranscript(options.toolCallId, { steps: [...transcript.steps] });
+        options.onTranscript(options.toolCallId, {
+          steps: [...transcript.steps],
+        });
       }
 
       onUpdate?.({
@@ -174,30 +180,45 @@ export class SubAgent {
       const unsubscribe = this.session.subscribe((event) => {
         switch (event.type) {
           case "agent_start":
-            updateUI("Starting...", [`Role: ${this.role}`, "Status: Starting..."]);
+            updateUI("Starting...", [
+              `Role: ${this.role}`,
+              "Status: Starting...",
+            ]);
             break;
 
           case "message_update":
             if (event.assistantMessageEvent.type === "text_delta") {
-              updateUI("Thinking...", [`Role: ${this.role}`, "Status: Working..."]);
+              updateUI("Thinking...", [
+                `Role: ${this.role}`,
+                "Status: Working...",
+              ]);
               currentAssistantText += event.assistantMessageEvent.delta;
 
               const last = transcript.steps[transcript.steps.length - 1];
               if (last?.type === "text") {
                 last.content = currentAssistantText;
               } else {
-                transcript.steps.push({ type: "text", content: currentAssistantText });
+                transcript.steps.push({
+                  type: "text",
+                  content: currentAssistantText,
+                });
               }
 
               notifyUpdate();
             } else if (event.assistantMessageEvent.type === "thinking_delta") {
-              updateUI("Thinking...", [`Role: ${this.role}`, "Status: Thinking..."]);
+              updateUI("Thinking...", [
+                `Role: ${this.role}`,
+                "Status: Thinking...",
+              ]);
 
               const last = transcript.steps[transcript.steps.length - 1];
               if (last?.type === "thinking") {
                 last.content += event.assistantMessageEvent.delta;
               } else {
-                transcript.steps.push({ type: "thinking", content: event.assistantMessageEvent.delta });
+                transcript.steps.push({
+                  type: "thinking",
+                  content: event.assistantMessageEvent.delta,
+                });
               }
 
               notifyUpdate();
@@ -220,7 +241,10 @@ export class SubAgent {
             break;
 
           case "tool_execution_end":
-            updateUI("Working...", [`Role: ${this.role}`, "Status: Working..."]);
+            updateUI("Working...", [
+              `Role: ${this.role}`,
+              "Status: Working...",
+            ]);
 
             transcript.steps.push({
               type: "result",
@@ -244,7 +268,12 @@ export class SubAgent {
 
             const finalContent = currentAssistantText
               ? [{ type: "text" as const, text: currentAssistantText }]
-              : [{ type: "text" as const, text: "No content returned from sub-agent." }];
+              : [
+                  {
+                    type: "text" as const,
+                    text: "No content returned from sub-agent.",
+                  },
+                ];
 
             resolve({ content: finalContent, transcript });
             break;

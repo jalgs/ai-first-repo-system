@@ -31,8 +31,7 @@ function readLockedDirs(workspaceDir: string): string[] {
 function assertAllowed(resolvedPath: string, workspaceDir: string): void {
   const workspace = path.resolve(workspaceDir);
   const inside =
-    resolvedPath === workspace ||
-    resolvedPath.startsWith(workspace + path.sep);
+    resolvedPath === workspace || resolvedPath.startsWith(workspace + path.sep);
 
   if (!inside) {
     throw new Error(`[BLOQUEADO] Path fuera del workspace: "${resolvedPath}"`);
@@ -100,8 +99,8 @@ function createEditOps(workspaceDir: string): EditOperations {
 
 const BLOCKED_BASH_PATTERNS: RegExp[] = [
   // ─── Paths fuera del workspace ───────────────────────────────────────────
-  /(?:^|\s|[;&|`(])((?:~|\$HOME|\/)[^\s;|&<>'"]{2,})/,  // paths absolutos, ~/, $HOME/
-  /(?:^|\s)(\.\.\/)/,                                      // traversal ../../
+  /(?:^|\s|[;&|`(])((?:~|\$HOME|\/)[^\s;|&<>'"]{2,})/, // paths absolutos, ~/, $HOME/
+  /(?:^|\s)(\.\.\/)/, // traversal ../../
 
   // ─── Escalada de privilegios ─────────────────────────────────────────────
   /\bsudo\b/,
@@ -119,41 +118,41 @@ const BLOCKED_BASH_PATTERNS: RegExp[] = [
   /\bnohup\b/,
   /\bsystemctl\b/,
   /\bservice\s/,
-  /\bat\s/,                   // at scheduler
+  /\bat\s/, // at scheduler
 
   // ─── Git: reescritura de historia ────────────────────────────────────────
-  /\bgit\s+rebase\b/,         // rebase interactivo o no
-  /\bgit\s+filter-branch\b/,  // reescritura masiva legacy
-  /\bgit\s+filter-repo\b/,    // reescritura masiva moderna
-  /\bgit\s+commit\b/,   // cualquier git commit (incluye --amend, -m, etc.)
+  /\bgit\s+rebase\b/, // rebase interactivo o no
+  /\bgit\s+filter-branch\b/, // reescritura masiva legacy
+  /\bgit\s+filter-repo\b/, // reescritura masiva moderna
+  /\bgit\s+commit\b/, // cualquier git commit (incluye --amend, -m, etc.)
   /\bgit\s+commit\s+.*--amend\b/, // modificar commit ya hecho
-  /\bgit\s+add\b/,    // cualquier git add
+  /\bgit\s+add\b/, // cualquier git add
 
   // ─── Git: pérdida de trabajo local ───────────────────────────────────────
-  /\bgit\s+reset\s+.*--hard\b/,   // descarta cambios sin recuperación
-  /\bgit\s+checkout\s+.*--\s/,    // descarta cambios en archivo concreto
-  /\bgit\s+restore\s+/,           // descarta cambios (git >= 2.23)
-  /\bgit\s+clean\s+.*-[a-z]*f/,   // -f/-fd/-ffx: elimina untracked
+  /\bgit\s+reset\s+.*--hard\b/, // descarta cambios sin recuperación
+  /\bgit\s+checkout\s+.*--\s/, // descarta cambios en archivo concreto
+  /\bgit\s+restore\s+/, // descarta cambios (git >= 2.23)
+  /\bgit\s+clean\s+.*-[a-z]*f/, // -f/-fd/-ffx: elimina untracked
 
   // ─── Git: operaciones remotas destructivas ───────────────────────────────
-  /\bgit\s+push\b/,   // cualquier git push (con o sin flags, con o sin remoto)
-  /\bgit\s+push\s+.*--force\b/,       // force push (sobreescribe remoto)
+  /\bgit\s+push\b/, // cualquier git push (con o sin flags, con o sin remoto)
+  /\bgit\s+push\s+.*--force\b/, // force push (sobreescribe remoto)
   /\bgit\s+push\s+.*-f\b/,
   /\bgit\s+push\s+.*--force-with-lease\b/,
-  /\bgit\s+push\s+.*--delete\b/,      // eliminar rama remota
-  /\bgit\s+push\s+[^-].*:\s*/,        // push con refspec de borrado (refs/:)
+  /\bgit\s+push\s+.*--delete\b/, // eliminar rama remota
+  /\bgit\s+push\s+[^-].*:\s*/, // push con refspec de borrado (refs/:)
 
   // ─── Git: eliminación de ramas/tags ──────────────────────────────────────
-  /\bgit\s+branch\s+.*-[dD]\b/,       // -d / -D: borrar rama local
-  /\bgit\s+tag\s+.*-d\b/,             // borrar tag local
+  /\bgit\s+branch\s+.*-[dD]\b/, // -d / -D: borrar rama local
+  /\bgit\s+tag\s+.*-d\b/, // borrar tag local
 
   // ─── Git: submodules y worktrees con riesgo ──────────────────────────────
-  /\bgit\s+submodule\s+deinit\b/,     // desinicializar submodule
+  /\bgit\s+submodule\s+deinit\b/, // desinicializar submodule
   /\bgit\s+worktree\s+remove\b/,
 
   // ─── Git: gc y mantenimiento agresivo ────────────────────────────────────
-  /\bgit\s+gc\s+.*--prune=now\b/,     // purga objetos sin red de seguridad
-  /\bgit\s+reflog\s+delete\b/,        // elimina historial de reflog
+  /\bgit\s+gc\s+.*--prune=now\b/, // purga objetos sin red de seguridad
+  /\bgit\s+reflog\s+delete\b/, // elimina historial de reflog
   /\bgit\s+reflog\s+expire\b/,
 ];
 
@@ -178,32 +177,55 @@ function createRestrictedBashTool(workspaceDir: string): AgentTool<any> {
             .replace(/^~/, home);
           const resolved = path.resolve(workspace, expanded);
 
-          if (!resolved.startsWith(workspace + path.sep) && resolved !== workspace) {
+          if (
+            !resolved.startsWith(workspace + path.sep) &&
+            resolved !== workspace
+          ) {
             return {
-              content: [{ type: "text", text: `[BLOQUEADO] Path fuera del workspace: "${captured}" → "${resolved}"` }],
+              content: [
+                {
+                  type: "text",
+                  text: `[BLOQUEADO] Path fuera del workspace: "${captured}" → "${resolved}"`,
+                },
+              ],
               details: {},
             };
           }
 
           for (const locked of readLockedDirs(workspaceDir)) {
             const lockedAbs = path.resolve(workspace, locked);
-            if (resolved === lockedAbs || resolved.startsWith(lockedAbs + path.sep)) {
+            if (
+              resolved === lockedAbs ||
+              resolved.startsWith(lockedAbs + path.sep)
+            ) {
               return {
-                content: [{ type: "text", text: `[BLOQUEADO] Path en directorio protegido (.lock): "${locked}"` }],
+                content: [
+                  {
+                    type: "text",
+                    text: `[BLOQUEADO] Path en directorio protegido (.lock): "${locked}"`,
+                  },
+                ],
                 details: {},
               };
             }
           }
         } else {
           return {
-            content: [{ type: "text", text: `[BLOQUEADO] Comando no permitido: ${pattern}` }],
+            content: [
+              {
+                type: "text",
+                text: `[BLOQUEADO] Comando no permitido: ${pattern}`,
+              },
+            ],
             details: {},
           };
         }
       }
 
       // exactOptionalPropertyTypes: omitir timeout si es undefined
-      const bashParams: { command: string; timeout?: number } = { command: p.command };
+      const bashParams: { command: string; timeout?: number } = {
+        command: p.command,
+      };
       if (p.timeout !== undefined) bashParams.timeout = p.timeout;
 
       return rawBash.execute(id, bashParams, signal, onUpdate);
@@ -215,9 +237,15 @@ function createRestrictedBashTool(workspaceDir: string): AgentTool<any> {
 
 export function createRestrictedTools(workspaceDir: string) {
   return {
-    read: createReadTool(workspaceDir, { operations: createReadOps(workspaceDir) }),
-    write: createWriteTool(workspaceDir, { operations: createWriteOps(workspaceDir) }),
-    edit: createEditTool(workspaceDir, { operations: createEditOps(workspaceDir) }),
+    read: createReadTool(workspaceDir, {
+      operations: createReadOps(workspaceDir),
+    }),
+    write: createWriteTool(workspaceDir, {
+      operations: createWriteOps(workspaceDir),
+    }),
+    edit: createEditTool(workspaceDir, {
+      operations: createEditOps(workspaceDir),
+    }),
     grep: createGrepTool(workspaceDir),
     find: createFindTool(workspaceDir),
     ls: createLsTool(workspaceDir),

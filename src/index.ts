@@ -1,4 +1,4 @@
 #!/usr/bin/env node
-import { createMainAgent } from './main-agent.js'
+import { createMainAgent } from "./main-agent.js";
 
-await createMainAgent()
+await createMainAgent();

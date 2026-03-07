@@ -1,5 +1,10 @@
 import { Box, Text } from "@mariozechner/pi-tui";
-import { highlightCode, getLanguageFromPath, type Theme, type ThemeColor } from "@mariozechner/pi-coding-agent";
+import {
+  highlightCode,
+  getLanguageFromPath,
+  type Theme,
+  type ThemeColor,
+} from "@mariozechner/pi-coding-agent";
 import { shortenPath, replaceTabs, renderOutputLines } from "./utils.js";
 import type { SubAgentResultStep } from "../../sub-agent.js";
 
@@ -13,8 +18,11 @@ type ToolRenderContext = {
   statusColor: ThemeColor;
 };
 
-function getTextContentFromResult(resultStep: SubAgentResultStep | undefined): string | undefined {
-  if (!resultStep?.result?.content || !Array.isArray(resultStep.result.content)) return undefined;
+function getTextContentFromResult(
+  resultStep: SubAgentResultStep | undefined
+): string | undefined {
+  if (!resultStep?.result?.content || !Array.isArray(resultStep.result.content))
+    return undefined;
   for (const block of resultStep.result.content) {
     if (block.type === "text" && block.text) return block.text;
   }
@@ -27,11 +35,16 @@ function renderReadTool(ctx: ToolRenderContext): void {
   const offset = ctx.args.offset as number | undefined;
   const limit = ctx.args.limit as number | undefined;
 
-  let pathDisplay = path ? ctx.theme.fg("accent" as ThemeColor, path) : ctx.theme.fg("toolOutput" as ThemeColor, "...");
+  let pathDisplay = path
+    ? ctx.theme.fg("accent" as ThemeColor, path)
+    : ctx.theme.fg("toolOutput" as ThemeColor, "...");
   if (offset !== undefined || limit !== undefined) {
     const startLine = offset ?? 1;
     const endLine = limit !== undefined ? startLine + limit - 1 : "";
-    pathDisplay += ctx.theme.fg("warning" as ThemeColor, `:${startLine}${endLine ? `-${endLine}` : ""}`);
+    pathDisplay += ctx.theme.fg(
+      "warning" as ThemeColor,
+      `:${startLine}${endLine ? `-${endLine}` : ""}`
+    );
   }
 
   ctx.toolBox.addChild(
@@ -47,12 +60,25 @@ function renderReadTool(ctx: ToolRenderContext): void {
     const text = getTextContentFromResult(ctx.resultStep);
     if (text) {
       const lang = rawPath ? getLanguageFromPath(rawPath) : undefined;
-      const allLines = lang ? highlightCode(replaceTabs(text), lang) : text.split("\n");
+      const allLines = lang
+        ? highlightCode(replaceTabs(text), lang)
+        : text.split("\n");
       const maxLines = ctx.expanded ? allLines.length : 10;
       const lines = allLines.slice(0, maxLines);
-      renderOutputLines(lines, ctx.theme, ctx.toolBox, { useThemeColor: !lang });
+      renderOutputLines(lines, ctx.theme, ctx.toolBox, {
+        useThemeColor: !lang,
+      });
       if (!ctx.expanded && allLines.length > maxLines) {
-        ctx.toolBox.addChild(new Text(ctx.theme.fg("muted" as ThemeColor, `... (${allLines.length - maxLines} more lines)`), 0, 0));
+        ctx.toolBox.addChild(
+          new Text(
+            ctx.theme.fg(
+              "muted" as ThemeColor,
+              `... (${allLines.length - maxLines} more lines)`
+            ),
+            0,
+            0
+          )
+        );
       }
     }
   }
@@ -74,12 +100,23 @@ function renderWriteTool(ctx: ToolRenderContext): void {
   // Always show content - truncate when collapsed
   if (content) {
     const lang = rawPath ? getLanguageFromPath(rawPath) : undefined;
-    const allLines = lang ? highlightCode(replaceTabs(content), lang) : content.split("\n");
+    const allLines = lang
+      ? highlightCode(replaceTabs(content), lang)
+      : content.split("\n");
     const maxLines = ctx.expanded ? allLines.length : 10;
     const lines = allLines.slice(0, maxLines);
     renderOutputLines(lines, ctx.theme, ctx.toolBox, { useThemeColor: !lang });
     if (!ctx.expanded && allLines.length > maxLines) {
-      ctx.toolBox.addChild(new Text(ctx.theme.fg("muted" as ThemeColor, `... (${allLines.length - maxLines} more lines)`), 0, 0));
+      ctx.toolBox.addChild(
+        new Text(
+          ctx.theme.fg(
+            "muted" as ThemeColor,
+            `... (${allLines.length - maxLines} more lines)`
+          ),
+          0,
+          0
+        )
+      );
     }
   }
 }
@@ -100,10 +137,24 @@ function renderEditTool(ctx: ToolRenderContext): void {
   if (ctx.args.oldText && ctx.args.newText) {
     const maxLen = ctx.expanded ? 100 : 50;
     ctx.toolBox.addChild(
-      new Text(ctx.theme.fg("muted" as ThemeColor, `  Old: "${String(ctx.args.oldText).slice(0, maxLen)}${String(ctx.args.oldText).length > maxLen ? "..." : ""}"`), 0, 0)
+      new Text(
+        ctx.theme.fg(
+          "muted" as ThemeColor,
+          `  Old: "${String(ctx.args.oldText).slice(0, maxLen)}${String(ctx.args.oldText).length > maxLen ? "..." : ""}"`
+        ),
+        0,
+        0
+      )
     );
     ctx.toolBox.addChild(
-      new Text(ctx.theme.fg("muted" as ThemeColor, `  New: "${String(ctx.args.newText).slice(0, maxLen)}${String(ctx.args.newText).length > maxLen ? "..." : ""}"`), 0, 0)
+      new Text(
+        ctx.theme.fg(
+          "muted" as ThemeColor,
+          `  New: "${String(ctx.args.newText).slice(0, maxLen)}${String(ctx.args.newText).length > maxLen ? "..." : ""}"`
+        ),
+        0,
+        0
+      )
     );
   }
 }
@@ -111,7 +162,9 @@ function renderEditTool(ctx: ToolRenderContext): void {
 function renderBashTool(ctx: ToolRenderContext): void {
   const command = (ctx.args.command ?? "") as string;
   const timeout = ctx.args.timeout as number | undefined;
-  const timeoutSuffix = timeout ? ctx.theme.fg("muted" as ThemeColor, ` (timeout ${timeout}s)`) : "";
+  const timeoutSuffix = timeout
+    ? ctx.theme.fg("muted" as ThemeColor, ` (timeout ${timeout}s)`)
+    : "";
 
   ctx.toolBox.addChild(
     new Text(
@@ -129,7 +182,16 @@ function renderBashTool(ctx: ToolRenderContext): void {
     const lines = allLines.slice(0, maxLines);
     renderOutputLines(lines, ctx.theme, ctx.toolBox, { useThemeColor: true });
     if (!ctx.expanded && allLines.length > maxLines) {
-      ctx.toolBox.addChild(new Text(ctx.theme.fg("muted" as ThemeColor, `... (${allLines.length - maxLines} more lines)`), 0, 0));
+      ctx.toolBox.addChild(
+        new Text(
+          ctx.theme.fg(
+            "muted" as ThemeColor,
+            `... (${allLines.length - maxLines} more lines)`
+          ),
+          0,
+          0
+        )
+      );
     }
   }
 }
@@ -155,7 +217,16 @@ function renderGrepTool(ctx: ToolRenderContext): void {
     const lines = allLines.slice(0, maxLines);
     renderOutputLines(lines, ctx.theme, ctx.toolBox, { useThemeColor: true });
     if (!ctx.expanded && allLines.length > maxLines) {
-      ctx.toolBox.addChild(new Text(ctx.theme.fg("muted" as ThemeColor, `... (${allLines.length - maxLines} more lines)`), 0, 0));
+      ctx.toolBox.addChild(
+        new Text(
+          ctx.theme.fg(
+            "muted" as ThemeColor,
+            `... (${allLines.length - maxLines} more lines)`
+          ),
+          0,
+          0
+        )
+      );
     }
   }
 }
@@ -181,7 +252,16 @@ function renderFindTool(ctx: ToolRenderContext): void {
     const lines = allLines.slice(0, maxLines);
     renderOutputLines(lines, ctx.theme, ctx.toolBox, { useThemeColor: true });
     if (!ctx.expanded && allLines.length > maxLines) {
-      ctx.toolBox.addChild(new Text(ctx.theme.fg("muted" as ThemeColor, `... (${allLines.length - maxLines} more lines)`), 0, 0));
+      ctx.toolBox.addChild(
+        new Text(
+          ctx.theme.fg(
+            "muted" as ThemeColor,
+            `... (${allLines.length - maxLines} more lines)`
+          ),
+          0,
+          0
+        )
+      );
     }
   }
 }
@@ -206,7 +286,16 @@ function renderLsTool(ctx: ToolRenderContext): void {
     const lines = allLines.slice(0, maxLines);
     renderOutputLines(lines, ctx.theme, ctx.toolBox, { useThemeColor: true });
     if (!ctx.expanded && allLines.length > maxLines) {
-      ctx.toolBox.addChild(new Text(ctx.theme.fg("muted" as ThemeColor, `... (${allLines.length - maxLines} more lines)`), 0, 0));
+      ctx.toolBox.addChild(
+        new Text(
+          ctx.theme.fg(
+            "muted" as ThemeColor,
+            `... (${allLines.length - maxLines} more lines)`
+          ),
+          0,
+          0
+        )
+      );
     }
   }
 }
@@ -226,10 +315,21 @@ function renderUnknownTool(ctx: ToolRenderContext): void {
   const maxLines = ctx.expanded ? allLines.length : 5;
   const lines = allLines.slice(0, maxLines);
   for (const line of lines) {
-    ctx.toolBox.addChild(new Text(ctx.theme.fg("muted" as ThemeColor, line), 0, 0));
+    ctx.toolBox.addChild(
+      new Text(ctx.theme.fg("muted" as ThemeColor, line), 0, 0)
+    );
   }
   if (!ctx.expanded && allLines.length > maxLines) {
-    ctx.toolBox.addChild(new Text(ctx.theme.fg("muted" as ThemeColor, `... (${allLines.length - maxLines} more lines)`), 0, 0));
+    ctx.toolBox.addChild(
+      new Text(
+        ctx.theme.fg(
+          "muted" as ThemeColor,
+          `... (${allLines.length - maxLines} more lines)`
+        ),
+        0,
+        0
+      )
+    );
   }
 }
 
@@ -275,11 +375,25 @@ export function renderToolContent(
   }
 }
 
-export function renderToolError(resultStep: SubAgentResultStep | undefined, theme: Theme, toolBox: Box): void {
-  if (!resultStep?.result?.content || !Array.isArray(resultStep.result.content)) return;
+export function renderToolError(
+  resultStep: SubAgentResultStep | undefined,
+  theme: Theme,
+  toolBox: Box
+): void {
+  if (!resultStep?.result?.content || !Array.isArray(resultStep.result.content))
+    return;
   for (const block of resultStep.result.content) {
     if (block.type === "text" && block.text) {
-      toolBox.addChild(new Text(theme.fg("error" as ThemeColor, `  Error: ${block.text.slice(0, 150)}`), 0, 0));
+      toolBox.addChild(
+        new Text(
+          theme.fg(
+            "error" as ThemeColor,
+            `  Error: ${block.text.slice(0, 150)}`
+          ),
+          0,
+          0
+        )
+      );
     }
   }
 }

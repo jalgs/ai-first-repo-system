@@ -2,3 +2,7 @@ node_modules
 dist
 sessions
 log.txt
+.eslintcache
+*.eslintignore
+src/.prettierrc.json
+src/.eslintrc.js

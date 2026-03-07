@@ -27,7 +27,10 @@ function createArgsSignature(args: SubAgentCallIdentity): string {
   });
 }
 
-export function registerSubAgentCall(toolCallId: string, args: SubAgentCallIdentity): void {
+export function registerSubAgentCall(
+  toolCallId: string,
+  args: SubAgentCallIdentity
+): void {
   const argsSignature = createArgsSignature(args);
 
   const ids = callIdsByArgsSignature.get(argsSignature) ?? [];
@@ -46,7 +49,10 @@ export function registerSubAgentCall(toolCallId: string, args: SubAgentCallIdent
   });
 }
 
-export function cacheTranscript(toolCallId: string, transcript: SubAgentTranscript): void {
+export function cacheTranscript(
+  toolCallId: string,
+  transcript: SubAgentTranscript
+): void {
   const existing = stateCache.get(toolCallId);
   if (!existing) return;
 
@@ -85,7 +91,9 @@ export function getGlobalExpanded(): boolean {
   return globalExpanded;
 }
 
-export function getMostRecentCachedTranscript(): SubAgentTranscript | undefined {
+export function getMostRecentCachedTranscript():
+  | SubAgentTranscript
+  | undefined {
   let latest: CachedState | undefined;
   for (const state of stateCache.values()) {
     if (!latest || state.updatedAt > latest.updatedAt) {
@@ -95,7 +103,9 @@ export function getMostRecentCachedTranscript(): SubAgentTranscript | undefined 
   return latest?.transcript;
 }
 
-export function getCachedTranscriptForArgs(args: SubAgentCallIdentity): SubAgentTranscript | undefined {
+export function getCachedTranscriptForArgs(
+  args: SubAgentCallIdentity
+): SubAgentTranscript | undefined {
   const signature = createArgsSignature(args);
   const callIds = callIdsByArgsSignature.get(signature);
   if (!callIds || callIds.length === 0) return undefined;
