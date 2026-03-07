@@ -34,7 +34,7 @@ class MainAgent {
   public async initSession() {
     const resourceLoader = new DefaultResourceLoader({
       cwd: process.cwd(),
-      systemPromptOverride: (base) => `${base}\n\n${SYSTEM_PROMPT}`,
+      systemPromptOverride: () => SYSTEM_PROMPT,
       extensionFactories: [this.subAgentExtension.bind(this)],
     });
 

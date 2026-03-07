@@ -5,6 +5,7 @@ import {
   type SessionRegistry,
 } from "../sub-agents/session-registry.js";
 import { Logger } from "../utils/logger.js";
+import { Container, Text } from "@mariozechner/pi-tui";
 
 const ListSubAgentSessions = Type.Object({});
 
@@ -16,7 +17,8 @@ export const listSubAgentSessions: ToolDefinition<
 > = {
   name: "listSubAgentSessions",
   label: "List Sub Agent Sessions",
-  description: "",
+  description:
+    "Use this tool to obtain existing sub agentes sessionId for reactivating ir with createSubAgent tool",
   parameters: ListSubAgentSessions,
   execute: async () => {
     const subAgentsSessions = SessionRegistryManager.list();
@@ -30,5 +32,36 @@ export const listSubAgentSessions: ToolDefinition<
       ],
       details: subAgentsSessions,
     };
+  },
+  renderCall: (_, theme) => {
+    const container = new Container();
+
+    container.addChild(
+      new Text(theme.fg("accent", `📃​ Listing Sub Agents`), 0, 0)
+    );
+
+    return container;
+  },
+  renderResult: (result, options, theme) => {
+    if (options.isPartial) {
+      return undefined;
+    }
+
+    const container = new Container();
+    container.addChild(
+      new Text(
+        theme.fg(
+          "accent",
+          result.details.length
+            ? result.details
+                .map((sa) => `${sa.role}: ${sa.sessionId}`)
+                .join("\n")
+            : "No Sub Agents found"
+        ),
+        0,
+        0
+      )
+    );
+    return container;
   },
 };

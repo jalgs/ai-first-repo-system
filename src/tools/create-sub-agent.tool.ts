@@ -15,6 +15,7 @@ import {
 } from "./sub-agent-ui-state.js";
 import { SubAgentRole } from "../sub-agents/index.js";
 import { Logger } from "../utils/logger.js";
+import { SessionRegistryManager } from "../sub-agents/session-registry.js";
 
 const SubAgentRoleSchema = StringEnum(Object.values(SubAgentRole), {
   description: "Specialization of the sub-agent",
@@ -42,10 +43,17 @@ export const subAgentTool: ToolDefinition<
 
   execute: async (toolCallId, params, signal, onUpdate, ctx) => {
     registerSubAgentCall(toolCallId, params);
+    let sessionDir: string | undefined = undefined;
+    if (params.sessionId) {
+      const sessions = SessionRegistryManager.list();
+      const found = sessions.find((s) => s.sessionId === params.sessionId);
+      if (found) sessionDir = found.sessionFile;
+    }
 
     const subAgent = new SubAgent({
       role: params.role,
       ctx,
+      sessionDir,
     });
 
     await subAgent.init();
@@ -82,7 +90,7 @@ export const subAgentTool: ToolDefinition<
       new Text(
         theme.fg(
           "accent",
-          `↳ Delegating to Sub-Agent [${theme.bold(args.role || "unknown")}]\n\n`
+          `↳ Delegating to Sub-Agent [${theme.bold(args.role || "unknown")}]\n\n${args.sessionId ? "Resumed: " + args.sessionId : "New"}\n\n${args.prompt}`
         ),
         0,
         0

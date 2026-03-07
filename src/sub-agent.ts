@@ -14,7 +14,6 @@ import {
   getSubAgentTools,
   SubAgentRole,
 } from "./sub-agents/index.js";
-import { Logger } from "./utils/logger.js";
 import { SessionRegistryManager } from "./sub-agents/session-registry.js";
 
 export interface SubAgentCallStep {
@@ -55,7 +54,7 @@ export interface SubAgentTranscript {
 export interface SubAgentConfig {
   role: SubAgentRole;
   ctx?: ExtensionContext;
-  sessionDir?: string;
+  sessionDir?: string | undefined;
 }
 
 export interface SubAgentRunOptions {
@@ -84,7 +83,7 @@ export class SubAgent {
 
     const resourceLoader = new DefaultResourceLoader({
       cwd: this.cwd,
-      systemPromptOverride: (base) => `${base}\n\n${systemPrompt}`,
+      systemPromptOverride: () => systemPrompt,
       extensionFactories: [this.subAgentExtension.bind(this)],
     });
 
@@ -146,9 +145,15 @@ export class SubAgent {
     const updateUI = (status: string, widgetLines?: string[]) => {
       if (!this.ctx?.hasUI) return;
 
+      const contextUsage = this.ctx?.getContextUsage();
+      const contextUsageSummary = this.ctx.ui.theme.fg(
+        "muted",
+        `| ${contextUsage?.percent?.toFixed(2) ?? 0}%/${Math.round((contextUsage?.contextWindow ?? 0) / 1000)}k`
+      );
+
       const accent = this.ctx.ui.theme.fg(
         "accent",
-        `● [Sub-Agent: ${this.role}] ${status}`
+        `● [Sub-Agent: ${this.role}] ${status} ${contextUsageSummary}`
       );
       this.ctx.ui.setStatus("subagent", accent);
 

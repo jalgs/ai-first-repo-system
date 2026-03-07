@@ -300,6 +300,214 @@ function renderLsTool(ctx: ToolRenderContext): void {
   }
 }
 
+function renderReadReportTool(ctx: ToolRenderContext): void {
+  const rawFileName = (ctx.args.fileName ?? "") as string;
+
+  // Call phase - matches readReport.visual format exactly
+  if (!rawFileName) {
+    // Listing mode
+    ctx.toolBox.addChild(
+      new Text(ctx.theme.fg("accent", "📖 Listing reports"), 0, 0)
+    );
+
+    // Show files listed if result available
+    const text = getTextContentFromResult(ctx.resultStep);
+    if (text?.trim()) {
+      ctx.toolBox.addChild(
+        new Text(ctx.theme.fg("success", text.trim()), 0, 0)
+      );
+
+      // Render the file list with truncation to 25 lines for listing view
+      const allLines = text.trim().split("\n");
+      const maxLines = ctx.expanded ? allLines.length : 25;
+      const lines = allLines.slice(0, maxLines);
+      renderOutputLines(lines, ctx.theme, ctx.toolBox, { useThemeColor: true });
+
+      if (!ctx.expanded && allLines.length > maxLines) {
+        ctx.toolBox.addChild(
+          new Text(
+            ctx.theme.fg(
+              "muted",
+              `... (${allLines.length - maxLines} more lines)`
+            ),
+            0,
+            0
+          )
+        );
+      }
+    }
+  } else if (ctx.resultStep?.result) {
+    // Reading specific file mode
+    ctx.toolBox.addChild(
+      new Text(
+        ctx.theme.fg(
+          "accent",
+          `📖 Reading report: ${shortenPath(rawFileName)}`
+        ),
+        0,
+        0
+      )
+    );
+
+    const result = ctx.resultStep.result;
+
+    // Check if content was read (should have text block in content)
+    let fileContent: string | undefined;
+    if (result.content && Array.isArray(result.content)) {
+      for (const block of result.content) {
+        if (block.type === "text" && block.text) {
+          fileContent = block.text;
+          break;
+        }
+      }
+    } else if (
+      result.content?.length === 1 &&
+      typeof result.content[0] === "object"
+    ) {
+      const single = result.content[0];
+      if (single.type === "text") {
+        fileContent = single.text;
+      }
+    }
+
+    if (fileContent) {
+      // Successfully read file - show success message like readReport
+      ctx.toolBox.addChild(
+        new Text(
+          ctx.theme.fg(
+            "success",
+            `✓ Read report (${fileContent.length} chars)`
+          ),
+          0,
+          0
+        )
+      );
+
+      // Show content with markdown/syntax highlighting
+      const lang = getLanguageFromPath(rawFileName);
+      const allLines = lang
+        ? highlightCode(replaceTabs(fileContent), lang)
+        : fileContent.split("\n");
+
+      // Truncate to 25 lines for files (more generous than tools)
+      const maxLines = ctx.expanded ? allLines.length : 25;
+      const linesToShow = allLines.slice(0, maxLines);
+      renderOutputLines(linesToShow, ctx.theme, ctx.toolBox, {
+        useThemeColor: !lang,
+      });
+
+      if (!ctx.expanded && allLines.length > maxLines) {
+        ctx.toolBox.addChild(
+          new Text(
+            ctx.theme.fg(
+              "muted",
+              `... (${allLines.length - maxLines} more lines)`
+            ),
+            0,
+            0
+          )
+        );
+      }
+    }
+  } else {
+    // Filename shown on call, result comes later
+    ctx.toolBox.addChild(
+      new Text(ctx.theme.fg("toolOutput", shortenPath(rawFileName)), 0, 0)
+    );
+  }
+}
+
+function renderWriteReportTool(ctx: ToolRenderContext): void {
+  const fileName = (ctx.args.fileName ?? "") as string;
+
+  // Call phase - matches writeReport.visual format exactly
+  ctx.toolBox.addChild(
+    new Text(
+      `${ctx.theme.fg(ctx.statusColor, ctx.statusIcon)} ${ctx.theme.fg("toolTitle" as ThemeColor, ctx.theme.bold("writeReport"))} ${ctx.theme.fg("accent" as ThemeColor, `✍️ Writing report: ${shortenPath(fileName)}`)}`,
+      0,
+      0
+    )
+  );
+
+  // Render result phase - only renders if result exists
+  if (!ctx.resultStep?.result || !ctx.resultStep.result.content) {
+    return;
+  }
+
+  const result = ctx.resultStep.result.content[0];
+
+  // Check for success/error message in text content
+  let resultText: string | undefined;
+  if (Array.isArray(result.content)) {
+    const textBlock = result.content.find(
+      (b: { type?: string; text?: string }) => b.type === "text"
+    );
+    resultText = textBlock?.text ?? "";
+  } else if (result.content && typeof result.content[0] === "object") {
+    const block = result.content[0];
+    resultText = block.type === "text" ? block.text : undefined;
+  }
+
+  // Handle error messages separately - rendered by renderToolError above
+  // For success: check if we have the created path in details
+
+  // Show success message with path from result.details if available
+  const successDetails = result.details?.path ?? "";
+  if (successDetails) {
+    ctx.toolBox.addChild(
+      new Text(
+        ctx.theme.fg("success", `✓ Report created at ${successDetails}`),
+        0,
+        0
+      )
+    );
+
+    // Render the written content (the report markdown itself)
+    let displayContent = "";
+
+    // Try to extract content from result if present in text field or details
+    if (
+      resultText &&
+      !resultText.includes("created") &&
+      !resultText.includes("Error")
+    ) {
+      displayContent = resultText;
+    } else if (successDetails) {
+      // If we only have success message, don't show additional content by default
+      // User can use readReport to view the created content
+      return;
+    }
+
+    // Only render detailed content if explicitly present in text field
+    if (displayContent) {
+      const lang = fileName ? getLanguageFromPath(fileName) : undefined;
+      const allLines = lang
+        ? highlightCode(replaceTabs(displayContent), lang)
+        : displayContent.split("\n");
+
+      // Truncate to 30 lines for write output (more than standard tools)
+      const maxLines = ctx.expanded ? allLines.length : 30;
+      const linesToShow = allLines.slice(0, maxLines);
+      renderOutputLines(linesToShow, ctx.theme, ctx.toolBox, {
+        useThemeColor: !lang,
+      });
+
+      if (!ctx.expanded && allLines.length > maxLines) {
+        ctx.toolBox.addChild(
+          new Text(
+            ctx.theme.fg(
+              "muted",
+              `... (${allLines.length - maxLines} more lines)`
+            ),
+            0,
+            0
+          )
+        );
+      }
+    }
+  }
+}
+
 function renderUnknownTool(ctx: ToolRenderContext): void {
   const toolName = (ctx.args as { toolName?: string }).toolName ?? "unknown";
   ctx.toolBox.addChild(
@@ -341,6 +549,8 @@ const toolRenderers: Record<string, (ctx: ToolRenderContext) => void> = {
   grep: renderGrepTool,
   find: renderFindTool,
   ls: renderLsTool,
+  readReport: renderReadReportTool,
+  writeReport: renderWriteReportTool,
 };
 
 export function renderToolContent(
