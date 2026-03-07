@@ -145,7 +145,11 @@ export class SubAgent<SubAgentRole extends string> {
         if (!contextUsage) return;
         const { percent } = contextUsage;
         Logger.log({ percent });
-        if (percent && percent >= ((process.env.COMPACT_PERCENTAGE_LIMIT as unknown as number) ?? 80)) {
+        if (
+          percent &&
+          percent >=
+            ((process.env.COMPACT_PERCENTAGE_LIMIT as unknown as number) ?? 80)
+        ) {
           Logger.log("compacting");
           isCompacting = true;
           if (this.ctx?.hasUI)
