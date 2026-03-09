@@ -1,5 +1,5 @@
-import * as path from "path";
-import * as fs from "fs";
+import * as path from "node:path";
+import * as fs from "node:fs";
 import {
   createReadTool,
   createWriteTool,
@@ -16,14 +16,17 @@ import type { AgentTool } from "@mariozechner/pi-agent-core";
 
 // ─── .lock ───────────────────────────────────────────────────────────────────
 
+const DEFAULT_LOCKED_DIRS = [".lock", "sessions"]
+
 function readLockedDirs(workspaceDir: string): string[] {
   const lockPath = path.join(workspaceDir, ".lock");
-  if (!fs.existsSync(lockPath)) return [];
+  if (!fs.existsSync(lockPath)) return DEFAULT_LOCKED_DIRS;
   return fs
     .readFileSync(lockPath, "utf-8")
     .split("\n")
     .map((l) => l.trim())
-    .filter((l) => l.length > 0 && !l.startsWith("#"));
+    .filter((l) => l.length > 0 && !l.startsWith("#"))
+    .concat(DEFAULT_LOCKED_DIRS);
 }
 
 // ─── Guardia de paths ─────────────────────────────────────────────────────────
