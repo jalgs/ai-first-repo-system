@@ -13,7 +13,7 @@ import {
   registerSubAgentCall,
   setGlobalExpanded,
 } from "./sub-agent-ui-state.js";
-import { SessionRegistryManager } from "./session-registry.js";
+import { SessionRegistryManager, type SessionRegistry } from "./session-registry.js";
 import type { SubAgentConfig } from "../../main-agent.js";
 
 export function createSubAgentTool<SubAgentRole extends string>(
@@ -28,10 +28,10 @@ export function createSubAgentTool<SubAgentRole extends string>(
 
   const SubAgentParams = Type.Object({
     role: SubAgentRoleSchema,
-    name: Type.String({
+    name: Type.Optional(Type.String({
       description:
-        "A descriptive name for this sub-agent instance (e.g. 'Researcher-auth-module').",
-    }),
+        "A descriptive name for creating a new sub-agent instance (e.g. 'Researcher-auth-module').",
+    })),
     prompt: Type.String({ description: "The message to send to the sub-agent. Include the mode (task or conversational), the objective, any reports to read, and the exact report filename to produce if in task mode." }),
     id: Type.Optional(Type.String({
       description: "Session ID of an existing sub-agent to reactivate. When provided, the sub-agent resumes with its prior context. Obtain the ID from listSubAgentSessions. Omit to create a new session.",
@@ -51,19 +51,19 @@ export function createSubAgentTool<SubAgentRole extends string>(
 
     execute: async (toolCallId, params, signal, onUpdate, ctx) => {
       registerSubAgentCall(toolCallId, params);
-      let sessionDir: string | undefined = undefined;
+      let session: SessionRegistry | undefined = undefined;
       if (params.id) {
         const sessions = SessionRegistryManager.list();
-        const found = sessions.find((s) => s.sessionId === params.id);
-        if (found) sessionDir = found.sessionFile;
-      }
+        session = sessions.find((s) => s.sessionId === params.id);
+        if (!session) throw new Error(`Session with id ${params.id} not found`)
+      } else if(!params.name) throw new Error(`Agent name is mandatory for creating a new agent session (no id provided)`)
 
       const subAgent = new SubAgent({
-        name: params.name,
+        name: session?.name ?? params.name as string,
         role: params.role,
         tools: subAgentsMap[params.role].tools,
         ctx,
-        sessionDir,
+        sessionDir: session?.sessionFile,
       });
 
       await subAgent.init();
