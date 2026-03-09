@@ -57,7 +57,7 @@ export interface SubAgentConfig<SubAgentRole extends string> {
   role: SubAgentRole;
   tools: Tool[];
   ctx?: ExtensionContext;
-  sessionDir?: string | undefined;
+  sessionFile?: string | undefined;
 }
 
 export interface SubAgentRunOptions {
@@ -77,7 +77,7 @@ export class SubAgent<SubAgentRole extends string> {
   private readonly tools: AgentTool[];
   private readonly cwd: string;
   private readonly ctx?: ExtensionContext;
-  private sessionDir?: string | undefined;
+  private sessionFile?: string | undefined;
 
   constructor(config: SubAgentConfig<SubAgentRole>) {
     this.name = config.name;
@@ -85,7 +85,7 @@ export class SubAgent<SubAgentRole extends string> {
     this.tools = config.tools as AgentTool[];
     if (config.ctx) this.ctx = config.ctx;
     this.cwd = config.ctx?.cwd ?? process.cwd();
-    this.sessionDir = config.sessionDir;
+    this.sessionFile = config.sessionFile;
   }
 
   public async init(): Promise<void> {
@@ -99,9 +99,12 @@ export class SubAgent<SubAgentRole extends string> {
 
     await resourceLoader.reload();
 
-    const sessionManager = this.sessionDir
-      ? SessionManager.continueRecent(this.cwd, this.sessionDir)
+    Logger.log({ sessionDir: this.sessionFile });
+    const sessionManager = this.sessionFile
+      ? SessionManager.open(this.sessionFile)
       : SessionManager.create(this.cwd);
+
+    Logger.log({ SessionManagerSessionDir: sessionManager.getSessionDir() });
 
     const { session } = await createAgentSession({
       cwd: this.cwd,
@@ -113,12 +116,13 @@ export class SubAgent<SubAgentRole extends string> {
 
     this.session = session;
 
-    SessionRegistryManager.register({
-      sessionId: this.session.sessionManager.getSessionId(),
-      sessionFile: this.session.sessionManager.getSessionFile() as string,
-      name: this.name,
-      role: this.role,
-    });
+    if (!this.sessionFile)
+      SessionRegistryManager.register({
+        sessionId: this.session.sessionManager.getSessionId(),
+        sessionFile: this.session.sessionManager.getSessionFile() as string,
+        name: this.name,
+        role: this.role,
+      });
 
     this.session.subscribe((event) => {
       this.eventListener.next(event);
@@ -149,7 +153,12 @@ export class SubAgent<SubAgentRole extends string> {
           percent >=
             ((process.env.COMPACT_PERCENTAGE_LIMIT as unknown as number) ?? 80)
         ) {
-          Logger.log({ message: "compacting", percent, role: this.role, name: this.name });
+          Logger.log({
+            message: "compacting",
+            percent,
+            role: this.role,
+            name: this.name,
+          });
           isCompacting = true;
           if (this.ctx?.hasUI)
             this.ctx?.ui.setWidget("subagent", ["Compacting Context..."]);

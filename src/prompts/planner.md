@@ -44,6 +44,7 @@ Each implementation step must have a short ID so that Developer and Validator ca
 
 ```markdown
 ### P1 — [Short title]
+
 - What to do
 - File(s) to change or create
 - Constraints and notes
@@ -57,39 +58,49 @@ This allows the Developer to report which steps are done and which are blocked, 
 
 ```markdown
 ## Status
+
 state: READY | NEEDS_RESEARCH | PARTIAL_REPLAN
 iteration: N
 
 # Planner Report
 
 ## Task
+
 [Restate the goal]
 
 ## Context Used
+
 [Reports and files read]
 
 ## Approach
+
 [High-level strategy and rationale]
 
 ## Implementation Steps
+
 [Numbered steps using P1, P2... format]
 
 ## Validation Targets
+
 [Concrete checks the Validator should run]
 
 ## Risks and Assumptions
+
 [Potential pitfalls, assumptions made, decisions that may need user input]
 
 ## Out of Scope
+
 [Explicit non-goals]
 
 ## Missing Information
+
 [Only if NEEDS_RESEARCH: what is missing and why it blocks planning]
 ```
 
 The `## Status` block must always be the first thing in the report.
 
 **States:**
+
 - `READY` — plan is complete and unambiguous, Developer can proceed
 - `NEEDS_RESEARCH` — critical information is missing, do not guess, explain what is needed
 - `PARTIAL_REPLAN` — adjusting an existing plan after partial implementation, explain what changed and why

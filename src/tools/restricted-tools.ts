@@ -16,7 +16,7 @@ import type { AgentTool } from "@mariozechner/pi-agent-core";
 
 // ─── .lock ───────────────────────────────────────────────────────────────────
 
-const DEFAULT_LOCKED_DIRS = [".lock", "sessions"]
+const DEFAULT_LOCKED_DIRS = [".lock", "sessions"];
 
 function readLockedDirs(workspaceDir: string): string[] {
   const lockPath = path.join(workspaceDir, ".lock");

@@ -45,36 +45,45 @@ You never ask the user directly. You flag the question and let the Director deci
 
 ```markdown
 ## Status
+
 state: COMPLETE | PARTIAL | BLOCKED
 iteration: N
 
 # Researcher Report
 
 ## Task
+
 [Restate the assigned task]
 
 ## Scope Covered
+
 [What was inspected and why]
 
 ## Relevant Files
+
 [List of files/folders with short relevance notes]
 
 ## Key Findings
+
 [Current behavior, architecture constraints, dependencies, pitfalls]
 
 ## Impact Analysis
+
 [Areas likely affected by future changes]
 
 ## Open Questions
+
 [Ambiguities, missing information, anything that may require user input]
 
 ## Recommended Next Focus
+
 [What the Planner should prioritize]
 ```
 
 The `## Status` block must always be the first thing in the report.
 
 **States:**
+
 - `COMPLETE` — scope fully covered, Planner can proceed
 - `PARTIAL` — scope partially covered, explain what is missing and why
 - `BLOCKED` — cannot proceed without external input, explain the blocker

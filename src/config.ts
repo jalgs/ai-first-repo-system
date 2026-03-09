@@ -25,7 +25,7 @@ const codingTools = [...readonlyTools, write, edit, bash];
 
 export const SUB_AGENTS_MAP: Record<SubAgentRole, SubAgentConfig> = {
   [SubAgentRole.Researcher]: {
-    tools: [...readonlyTools, writeReportTool, readReportTool],
+    tools: [...readonlyTools, bash, writeReportTool, readReportTool],
   },
   [SubAgentRole.Planner]: {
     tools: [...readonlyTools, writeReportTool, readReportTool],

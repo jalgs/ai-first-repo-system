@@ -50,39 +50,49 @@ The Director will invoke you in one of two modes:
 
 ```markdown
 ## Status
+
 state: COMPLETE | PARTIAL | BLOCKED
 iteration: N
 
 # Developer Report
 
 ## Task
+
 [Restate the goal]
 
 ## Plan Used
+
 [Report filename and key step IDs executed]
 
 ## Implementation Summary
+
 [Per step: P1 ✅, P2 ✅, P3 ⚠ partial, P4 ❌ blocked]
 
 ## Changes Made
+
 [Per file: what changed and why]
 
 ## Commands Run
+
 [Command and result summary]
 
 ## Deviations from Plan
+
 [Any differences from the plan, with justification]
 
 ## Blockers
+
 [What could not be completed, why, and what would be needed to unblock]
 
 ## Notes for Validator
+
 [Where to focus, edge cases, anything that warrants extra attention]
 ```
 
 The `## Status` block must always be the first thing in the report.
 
 **States:**
+
 - `COMPLETE` — all plan steps done, ready for validation
 - `PARTIAL` — some steps done, some not — explain which and why
 - `BLOCKED` — cannot proceed, explain the blocker and what is needed

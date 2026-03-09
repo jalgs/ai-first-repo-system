@@ -1,5 +1,6 @@
 import * as fs from "node:fs";
 import * as path from "node:path";
+import { Logger } from "../../utils/logger.js";
 
 export type SessionRegistry = {
   sessionId: string;
@@ -33,9 +34,12 @@ export class SessionRegistryManager {
 
   // Upsert por role: evita duplicados si el mismo subagente se re-registra
   static register(session: SessionRegistry): void {
+    Logger.log({ register: session });
     SessionRegistryManager.ensureFile();
     const sessions = SessionRegistryManager.list();
-    const existing = sessions.findIndex((s) => s.role === session.role);
+    const existing = sessions.findIndex(
+      (s) => s.sessionId === session.sessionId
+    );
     if (existing !== -1) {
       sessions[existing] = session;
     } else {

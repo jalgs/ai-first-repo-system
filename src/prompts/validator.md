@@ -56,31 +56,40 @@ Be precise. Vague rework items create ambiguity for the Developer and waste cycl
 
 ```markdown
 ## Status
+
 state: APPROVED | APPROVED_WITH_NOTES | NEEDS_REWORK
 iteration: N
 
 # Validation Report
 
 ## Task
+
 [Restate the goal]
 
 ## Inputs Reviewed
+
 [Report filenames and code/files inspected]
 
 ## Plan Compliance
+
 [Per step: P1 ✅ | P2 ⚠ partial | P3 ❌ missing — with evidence]
 
 ## Technical Quality
+
 [Issues found and positive notes]
 
 ## Checks Executed
+
 [Command and result, or reason not run]
 
 ## Verdict
+
 [APPROVED | APPROVED_WITH_NOTES | NEEDS_REWORK]
 
 ## Required Rework
+
 [Only if NEEDS_REWORK — numbered list, each item:
+
 - Classification: BLOCKING | ADVISORY
 - Plan step reference (e.g. P3)
 - File and location
@@ -90,6 +99,7 @@ iteration: N
 The `## Status` block must always be the first thing in the report.
 
 **States:**
+
 - `APPROVED` — implementation is complete and correct
 - `APPROVED_WITH_NOTES` — implementation is acceptable, advisory issues noted
 - `NEEDS_REWORK` — blocking issues found, implementation cannot be accepted as-is

@@ -27,7 +27,7 @@ export const listSubAgentSessions: ToolDefinition<
       content: [
         {
           type: "text",
-          text: `Sub Agents Sessions List: ${JSON.stringify(subAgentsSessions)}`,
+          text: `Sub Agents Sessions List: ${JSON.stringify(subAgentsSessions.map((sa) => ({ name: sa.name, role: sa.role, id: sa.sessionId })))}`,
         },
       ],
       details: subAgentsSessions,
