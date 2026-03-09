@@ -55,8 +55,8 @@ export function createSubAgentTool<SubAgentRole extends string>(
       if (params.id) {
         const sessions = SessionRegistryManager.list();
         session = sessions.find((s) => s.sessionId === params.id);
-        if (!session) throw new Error(`Session with id ${params.id} not found`)
-      } else if(!params.name) throw new Error(`Agent name is mandatory for creating a new agent session (no id provided)`)
+        if (!session) throw new Error(`[Error] Session with id ${params.id} not found`)
+      } else if(!params.name) throw new Error(`[Error] Agent name is mandatory for creating a new agent session (no id provided)`)
 
       const subAgent = new SubAgent({
         name: session?.name ?? params.name as string,
