@@ -22,7 +22,7 @@ export function createSubAgentTool<SubAgentRole extends string>(
   const SubAgentRoleSchema = StringEnum(
     Object.keys(subAgentsMap) as Array<keyof typeof subAgentsMap>,
     {
-      description: "Specialization of the sub-agent",
+      description: "Role of the sub-agent to invoke.",
     }
   );
 
@@ -30,11 +30,11 @@ export function createSubAgentTool<SubAgentRole extends string>(
     role: SubAgentRoleSchema,
     name: Type.String({
       description:
-        "The sub-agent name. It will be stored in asociation with the generated sessionId",
+        "A descriptive name for this sub-agent instance (e.g. 'Researcher-auth-module').",
     }),
-    prompt: Type.String({ description: "The task to send to the sub-agent" }),
+    prompt: Type.String({ description: "The message to send to the sub-agent. Include the mode (task or conversational), the objective, any reports to read, and the exact report filename to produce if in task mode." }),
     id: Type.String({
-      description: "When provided it resume a previous existing sub-agent",
+      description: "Session ID of an existing sub-agent to reactivate. When provided, the sub-agent resumes with its prior context. Obtain the ID from listSubAgentSessions. Omit to create a new session.",
     }),
   });
 
@@ -46,8 +46,7 @@ export function createSubAgentTool<SubAgentRole extends string>(
   > = {
     name: "subAgent",
     label: "Sub-Agent",
-    description: `Spawns a specialized sub-agent to handle a focused task.
-    Returns the final response from the sub-agent.`,
+    description: `Invokes a sub-agent by role. Use this for task delegation (the sub-agent works and writes a report) or conversational queries (the sub-agent replies directly without producing a report). Make the expected mode explicit in the prompt.`,
     parameters: SubAgentParams,
 
     execute: async (toolCallId, params, signal, onUpdate, ctx) => {

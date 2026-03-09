@@ -18,7 +18,7 @@ export const listSubAgentSessions: ToolDefinition<
   name: "listSubAgentSessions",
   label: "List Sub Agent Sessions",
   description:
-    "Use this tool to obtain existing sub agentes sessionId for reactivating ir with createSubAgent tool",
+    "Returns the list of existing sub-agent sessions with their IDs, names, and roles. Use this to retrieve a session ID before reactivating an existing sub-agent.",
   parameters: ListSubAgentSessions,
   execute: async () => {
     const subAgentsSessions = SessionRegistryManager.list();

@@ -9,7 +9,7 @@ const ReadReportParams = Type.Object({
   fileName: Type.Optional(
     Type.String({
       description:
-        "Name of report file to read (e.g. planner-report.md). If omitted, lists available report files.",
+        "File name of the report to read (e.g. planner-report.md). Omit to list all available reports.",
     })
   ),
 });
@@ -23,7 +23,7 @@ export const readReportTool: ToolDefinition<
   name: "readReport",
   label: "Read Report",
   description:
-    "Reads report files from the current session reports directory. Use this to inspect outputs from other sub-agents. This tool does NOT create or write reports.",
+    "Reads a report file from the session reports directory. If fileName is omitted, lists all available report files instead.",
   parameters: ReadReportParams,
 
   execute: async (toolCallId, params, signal, onUpdate, ctx) => {

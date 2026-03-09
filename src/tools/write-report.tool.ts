@@ -8,7 +8,7 @@ import { SessionRegistryManager } from "./sub-agents/session-registry.js";
 const WriteReportParams = Type.Object({
   fileName: Type.String({
     description:
-      "Report file name only (e.g. researcher-report.md). Do not provide directories.",
+      "File name for the report (e.g. developer-report-v2.md). Base name only, no paths. Use the exact name specified by the Director.",
   }),
   content: Type.String({
     description: "Full markdown content of the report.",
@@ -24,7 +24,7 @@ export const writeReportTool: ToolDefinition<
   name: "writeReport",
   label: "Write Report",
   description:
-    "Creates a NEW report file in the current session reports directory. Fails if the file already exists (no overwrite).",
+    "Writes a new report file to the session reports directory. Fails if a file with that name already exists — do not retry with the same filename expecting overwrite.",
   parameters: WriteReportParams,
 
   execute: async (toolCallId, params, signal, onUpdate, ctx) => {
