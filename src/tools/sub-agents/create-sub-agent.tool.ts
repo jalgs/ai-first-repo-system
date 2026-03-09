@@ -33,9 +33,9 @@ export function createSubAgentTool<SubAgentRole extends string>(
         "A descriptive name for this sub-agent instance (e.g. 'Researcher-auth-module').",
     }),
     prompt: Type.String({ description: "The message to send to the sub-agent. Include the mode (task or conversational), the objective, any reports to read, and the exact report filename to produce if in task mode." }),
-    id: Type.String({
+    id: Type.Optional(Type.String({
       description: "Session ID of an existing sub-agent to reactivate. When provided, the sub-agent resumes with its prior context. Obtain the ID from listSubAgentSessions. Omit to create a new session.",
-    }),
+    })),
   });
 
   type SubAgentParams = Static<typeof SubAgentParams>;
