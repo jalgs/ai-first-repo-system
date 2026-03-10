@@ -15,7 +15,7 @@ export class SessionRegistryManager {
   private static registryPath(): string {
     return path.join(
       process.cwd(),
-      "sessions",
+      ".sessions",
       SessionRegistryManager.current(),
       "registry.json"
     );

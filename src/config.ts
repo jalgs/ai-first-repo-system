@@ -6,7 +6,7 @@ import { createRestrictedTools } from "./tools/restricted-tools.js";
 
 // Name of file in ./prompts/
 export const MAIN_AGENT = "director";
-export const MAIN_AGENT_TOOLS: Tool[] = [readReportTool];
+export const MAIN_AGENT_TOOLS: Tool[] = [writeReportTool, readReportTool];
 
 // Names of files in ./prompts/
 export enum SubAgentRole {

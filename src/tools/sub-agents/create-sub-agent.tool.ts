@@ -63,22 +63,28 @@ export function createSubAgentTool<SubAgentRole extends string>(
 
     execute: async (toolCallId, params, signal, onUpdate, ctx) => {
       registerSubAgentCall(toolCallId, params);
-      Logger.log({ params });
+
       let session: SessionRegistry | undefined = undefined;
       if (params.id) {
         const sessions = SessionRegistryManager.list();
         session = sessions.find((s) => s.sessionId === params.id);
-        if (!session)
+        if (!session) {
+          Logger.log(`[Error] Session with id ${params.id} not found`);
           throw new Error(`[Error] Session with id ${params.id} not found`);
-      } else if (!params.name)
+        }
+      } else if (!params.name) {
+        Logger.log(
+          `[Error] Agent name is mandatory for creating a new agent session (no id provided)`
+        );
         throw new Error(
           `[Error] Agent name is mandatory for creating a new agent session (no id provided)`
         );
-      Logger.log({
-        name: session?.name ?? (params.name as string),
-        role: params.role,
-        sessionFile: session?.sessionFile,
-      });
+      }
+
+      Logger.log(
+        `[SUB AGENT] ${params.id ? "Resumed" : "New"}: ${session?.name ?? params.name}`
+      );
+
       const subAgent = new SubAgent({
         name: session?.name ?? (params.name as string),
         role: params.role,
@@ -111,6 +117,8 @@ export function createSubAgentTool<SubAgentRole extends string>(
       } catch (error) {
         clearCachedTranscript(toolCallId);
         throw error;
+      } finally {
+        Logger.log('[SUB AGENT END')
       }
     },
 

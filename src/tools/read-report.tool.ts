@@ -4,6 +4,7 @@ import * as fs from "node:fs/promises";
 import * as path from "node:path";
 import { Container, Text } from "@mariozechner/pi-tui";
 import { SessionRegistryManager } from "./sub-agents/session-registry.js";
+import { Logger } from "../utils/logger.js";
 
 const ReadReportParams = Type.Object({
   fileName: Type.Optional(
@@ -27,10 +28,11 @@ export const readReportTool: ToolDefinition<
   parameters: ReadReportParams,
 
   execute: async (toolCallId, params, signal, onUpdate, ctx) => {
+    Logger.log(`[READ REPORT] ${params.fileName}`);
     const sessionId = SessionRegistryManager.current();
     const reportsDir = path.join(
       process.cwd(),
-      "sessions",
+      ".sessions",
       sessionId,
       "reports"
     );
@@ -45,6 +47,7 @@ export const readReportTool: ToolDefinition<
           details: { content: contentStr },
         };
       } catch (err: any) {
+        Logger.log(`Failed to read report ${safeFileName}: ${err.message}`);
         throw new Error(
           `Failed to read report ${safeFileName}: ${err.message}`
         );

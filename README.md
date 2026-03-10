@@ -36,7 +36,7 @@ src/
 └── prompts/                # Prompts markdown por rol
 
 dist/                       # TS compiled output
-sessions/                   # Persistencia de sesiones JSON
+.sessions/                   # Persistencia de sesiones JSON
 
 
 ```
@@ -45,7 +45,7 @@ sessions/                   # Persistencia de sesiones JSON
 
 - Validación de paths dentro de `/workspace/*`
 - Bloqueo de comandos bash peligrosos (BLOCKED_BASH_PATTERNS)
-- Persistencia de sesiones en directorio `sessions/`
+- Persistencia de sesiones en directorio `.sessions/`
 - Directorio `.lock` protegido (inaccesible por diseño)
 
 ## Scripts Disponibles

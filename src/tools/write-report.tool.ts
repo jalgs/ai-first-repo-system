@@ -4,6 +4,7 @@ import * as fs from "node:fs/promises";
 import * as path from "node:path";
 import { Container, Text } from "@mariozechner/pi-tui";
 import { SessionRegistryManager } from "./sub-agents/session-registry.js";
+import { Logger } from "../utils/logger.js";
 
 const WriteReportParams = Type.Object({
   fileName: Type.String({
@@ -28,10 +29,11 @@ export const writeReportTool: ToolDefinition<
   parameters: WriteReportParams,
 
   execute: async (toolCallId, params, signal, onUpdate, ctx) => {
+    Logger.log(`[WRITE REPORT] ${params.fileName}`);
     const sessionId = SessionRegistryManager.current();
     const reportsDir = path.join(
       process.cwd(),
-      "sessions",
+      ".sessions",
       sessionId,
       "reports"
     );
@@ -48,6 +50,9 @@ export const writeReportTool: ToolDefinition<
       });
     } catch (error: any) {
       if (error?.code === "EEXIST") {
+        Logger.log(
+          `Report already exists: ${safeFileName}. writeReport does not overwrite existing files.`
+        );
         throw new Error(
           `Report already exists: ${safeFileName}. writeReport does not overwrite existing files.`
         );
